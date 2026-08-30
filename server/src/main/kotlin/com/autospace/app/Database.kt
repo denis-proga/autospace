@@ -4,6 +4,8 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.transactions.transaction
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 
 object Users : Table("users") {
     val id = integer("id").autoIncrement()
@@ -33,7 +35,22 @@ object TestResults : Table("test_results") {
 }
 
 fun initDatabase() {
-    Database.connect("jdbc:sqlite:autospace.db", driver = "org.sqlite.JDBC")
+    val databaseUrl = System.getenv("DATABASE_URL")
+
+    if (databaseUrl.isNullOrBlank()) {
+        // локальная разработка
+        Database.connect("jdbc:sqlite:autospace.db", driver = "org.sqlite.JDBC")
+        println("Database: SQLite (local)")
+    } else {
+        val config = HikariConfig().apply {
+            jdbcUrl = databaseUrl
+            driverClassName = "org.postgresql.Driver"
+            maximumPoolSize = 5
+        }
+        Database.connect(HikariDataSource(config))
+        println("Database: PostgreSQL")
+    }
+
     transaction {
         SchemaUtils.create(Users, TestResults)
     }

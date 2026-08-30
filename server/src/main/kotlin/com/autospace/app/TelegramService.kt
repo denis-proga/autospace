@@ -16,8 +16,11 @@ import io.ktor.client.call.body
 val dotenv = dotenv {
     ignoreIfMissing = true
 }
-private val botToken: String = dotenv["TELEGRAM_BOT_TOKEN"] ?: ""
-private val chatId: String = dotenv["TELEGRAM_CHAT_ID"] ?: ""
+fun readSetting(key: String): String =
+    System.getenv(key) ?: dotenv[key] ?: ""
+
+private val botToken: String = readSetting("TELEGRAM_BOT_TOKEN")
+private val chatId: String = readSetting("TELEGRAM_CHAT_ID")
 
 private val telegramClient = HttpClient(CIO) {
     install(io.ktor.client.plugins.HttpTimeout) {

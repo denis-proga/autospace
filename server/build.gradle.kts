@@ -28,4 +28,6 @@ dependencies {
     implementation(libs.ktor.clientCio)
     implementation(libs.ktor.clientContentNegotiation)
     implementation(libs.jakartaMail)
+    implementation(libs.postgresql)
+    implementation(libs.hikari)
 }

@@ -20,6 +20,8 @@ exposed = "0.56.0"
 sqlite-jdbc = "3.47.1.0"
 dotenv = "6.4.1"
 jakartaMail = "2.0.1"
+postgresql = "42.7.4"
+hikari = "6.2.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -55,6 +57,8 @@ ktor-clientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiat
 ktor-clientCio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 dotenv = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "dotenv" }
 jakartaMail = { module = "org.eclipse.angus:angus-mail", version.ref = "jakartaMail" }
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

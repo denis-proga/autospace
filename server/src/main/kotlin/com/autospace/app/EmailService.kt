@@ -9,8 +9,8 @@ import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import java.util.Properties
 
-private val gmailAddress: String = dotenv["GMAIL_ADDRESS"] ?: ""
-private val gmailAppPassword: String = dotenv["GMAIL_APP_PASSWORD"] ?: ""
+private val gmailAddress: String = readSetting("GMAIL_ADDRESS")
+private val gmailAppPassword: String = readSetting("GMAIL_APP_PASSWORD")
 
 object EmailService {
     fun sendVerificationCode(toEmail: String, code: String) {
