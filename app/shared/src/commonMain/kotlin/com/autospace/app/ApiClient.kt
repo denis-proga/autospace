@@ -10,6 +10,7 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 import io.ktor.client.request.get
+import io.ktor.client.plugins.HttpTimeout
 
 @Serializable
 data class RegisterRequestDto(
@@ -73,11 +74,18 @@ data class StatsResponseDto(
 object ApiClient {
     // ВАЖНО: для Android-эмулятора localhost сервера — это 10.0.2.2, а не 127.0.0.1
     // Для Desktop — 127.0.0.1 подходит
-    private const val BASE_URL = "http://127.0.0.1:8080"
+    private const val BASE_URL = "https://autospace-hv2r.onrender.com"
 
     private val client = HttpClient {
+        followRedirects = true
+
         install(ContentNegotiation) {
             json()
+        }
+
+        install(HttpTimeout) {
+            requestTimeoutMillis = 90_000
+            connectTimeoutMillis = 30_000
         }
     }
 

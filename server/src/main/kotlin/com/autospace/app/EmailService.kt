@@ -24,6 +24,9 @@ object EmailService {
             put("mail.smtp.starttls.enable", "true")
             put("mail.smtp.host", "smtp.gmail.com")
             put("mail.smtp.port", "587")
+            put("mail.smtp.connectiontimeout", "10000")
+            put("mail.smtp.timeout", "10000")
+            put("mail.smtp.writetimeout", "10000")
         }
 
         val session = Session.getInstance(props, object : Authenticator() {

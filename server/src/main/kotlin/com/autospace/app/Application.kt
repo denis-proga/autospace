@@ -17,6 +17,8 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.update
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 fun main() {
     initDatabase()
@@ -63,7 +65,9 @@ fun Application.module() {
                 password = request.password
             )
 
-            EmailService.sendVerificationCode(request.email, code)
+            withContext(Dispatchers.IO) {
+                EmailService.sendVerificationCode(request.email, code)
+            }
 
             call.respond(AuthResponse(success = true, message = "Verification code sent to email"))
         }
