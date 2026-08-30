@@ -42,8 +42,14 @@ fun initDatabase() {
         Database.connect("jdbc:sqlite:autospace.db", driver = "org.sqlite.JDBC")
         println("Database: SQLite (local)")
     } else {
+        val uri = java.net.URI(databaseUrl.removePrefix("jdbc:"))
+        val userInfo = uri.userInfo?.split(":")
+        val cleanUrl = "jdbc:postgresql://${uri.host}${uri.path}?sslmode=require"
+
         val config = HikariConfig().apply {
-            jdbcUrl = databaseUrl
+            jdbcUrl = cleanUrl
+            username = userInfo?.getOrNull(0)
+            password = userInfo?.getOrNull(1)
             driverClassName = "org.postgresql.Driver"
             maximumPoolSize = 5
         }
