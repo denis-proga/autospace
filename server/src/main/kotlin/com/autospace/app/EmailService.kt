@@ -9,6 +9,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 
@@ -32,13 +33,13 @@ object EmailService {
         }
     }
 
-    suspend fun sendVerificationCode(toEmail: String, code: String) {
+    suspend fun sendVerificationCode(toEmail: String, code: String): Boolean {
         if (resendApiKey.isEmpty()) {
             println("Resend not configured, skipping email send. Code would have been: $code")
-            return
+            return false
         }
 
-        try {
+        return try {
             val response = client.post("https://api.resend.com/emails") {
                 header("Authorization", "Bearer $resendApiKey")
                 contentType(ContentType.Application.Json)
@@ -52,8 +53,10 @@ object EmailService {
                 )
             }
             println("Resend response: ${response.status}")
+            response.status.isSuccess()
         } catch (e: Exception) {
             println("Failed to send email via Resend: ${e.message}")
+            false
         }
     }
 }
