@@ -1,7 +1,7 @@
-FROM gradle:8.14-jdk21 AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 COPY . .
-RUN gradle :server:installDist --no-daemon
+RUN chmod +x gradlew && ./gradlew :server:installDist --no-daemon
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
