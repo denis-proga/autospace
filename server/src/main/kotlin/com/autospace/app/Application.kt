@@ -65,9 +65,7 @@ fun Application.module() {
                 password = request.password
             )
 
-            withContext(Dispatchers.IO) {
-                EmailService.sendVerificationCode(request.email, code)
-            }
+            EmailService.sendVerificationCode(request.email, code)
 
             call.respond(AuthResponse(success = true, message = "Verification code sent to email"))
         }
