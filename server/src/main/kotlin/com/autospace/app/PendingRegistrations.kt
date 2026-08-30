@@ -1,7 +1,6 @@
 package com.autospace.app
 
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.random.Random
 
 data class PendingRegistration(
     val firstName: String,
@@ -11,13 +10,24 @@ data class PendingRegistration(
     val password: String,
     val code: String,
     val createdAt: Long,
+    val lastSentAt: Long = createdAt,
+    val resendCount: Int = 0,
     var attempts: Int = 0
 )
+
+sealed class ResendResult {
+    data class Success(val email: String, val code: String) : ResendResult()
+    data class Cooldown(val secondsLeft: Long) : ResendResult()
+    object TooManyAttempts : ResendResult()
+    object NotFound : ResendResult()
+}
 
 object PendingRegistrations {
     private val store = ConcurrentHashMap<String, PendingRegistration>()
     private const val CODE_TTL_MILLIS = 15 * 60 * 1000L // 15 минут
     private const val MAX_ATTEMPTS = 5
+    private const val RESEND_COOLDOWN_MILLIS = 60 * 1000L // 60 секунд
+    private const val MAX_RESENDS = 3
 
     fun generateCode(): String {
         return (100000..999999).random().toString()
@@ -63,5 +73,30 @@ object PendingRegistrations {
 
         store.remove(username)
         return pending
+    }
+
+    fun resend(username: String): ResendResult {
+        val pending = store[username] ?: return ResendResult.NotFound
+
+        val elapsedSinceLastSent = System.currentTimeMillis() - pending.lastSentAt
+        if (elapsedSinceLastSent < RESEND_COOLDOWN_MILLIS) {
+            val secondsLeft = (RESEND_COOLDOWN_MILLIS - elapsedSinceLastSent) / 1000 + 1
+            return ResendResult.Cooldown(secondsLeft)
+        }
+
+        if (pending.resendCount >= MAX_RESENDS) {
+            return ResendResult.TooManyAttempts
+        }
+
+        val newCode = generateCode()
+        store[username] = pending.copy(
+            code = newCode,
+            createdAt = System.currentTimeMillis(),
+            lastSentAt = System.currentTimeMillis(),
+            resendCount = pending.resendCount + 1,
+            attempts = 0
+        )
+
+        return ResendResult.Success(pending.email, newCode)
     }
 }

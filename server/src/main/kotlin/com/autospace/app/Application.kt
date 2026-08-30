@@ -65,7 +65,12 @@ fun Application.module() {
                 password = request.password
             )
 
-            EmailService.sendVerificationCode(request.email, code)
+            val emailSent = EmailService.sendVerificationCode(request.email, code)
+
+            if (!emailSent) {
+                call.respond(AuthResponse(success = false, message = "Не удалось отправить письмо с кодом. Попробуйте позже"))
+                return@post
+            }
 
             call.respond(AuthResponse(success = true, message = "Verification code sent to email"))
         }
@@ -101,6 +106,32 @@ fun Application.module() {
             }
 
             call.respond(AuthResponse(success = true, message = "Registration successful, awaiting approval", licenseStatus = "PENDING"))
+        }
+
+        post("/resend-code") {
+            val request = call.receive<ResendCodeRequest>()
+
+            when (val result = PendingRegistrations.resend(request.username)) {
+                is ResendResult.NotFound -> {
+                    call.respond(AuthResponse(success = false, message = "Регистрация не найдена или уже завершена"))
+                }
+                is ResendResult.Cooldown -> {
+                    call.respond(AuthResponse(success = false, message = "Подождите ${result.secondsLeft} сек. перед повторной отправкой"))
+                }
+                is ResendResult.TooManyAttempts -> {
+                    call.respond(AuthResponse(success = false, message = "Превышен лимит повторных отправок. Обратитесь в поддержку"))
+                }
+                is ResendResult.Success -> {
+                    val emailSent = EmailService.sendVerificationCode(result.email, result.code)
+
+                    if (!emailSent) {
+                        call.respond(AuthResponse(success = false, message = "Не удалось отправить письмо с кодом. Попробуйте позже"))
+                        return@post
+                    }
+
+                    call.respond(AuthResponse(success = true, message = "Код отправлен повторно"))
+                }
+            }
         }
 
         post("/login") {

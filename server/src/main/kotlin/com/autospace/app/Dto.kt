@@ -60,3 +60,8 @@ data class TestResultDto(
 data class StatsResponse(
     val results: List<TestResultDto>
 )
+
+@Serializable
+data class ResendCodeRequest(
+    val username: String
+)

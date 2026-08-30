@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 
 @Composable
 @Preview
@@ -41,8 +43,19 @@ fun App() {
         var pendingPassword by remember { mutableStateOf<String?>(null) }
         var isLoadingStats by remember { mutableStateOf(false) }
         var statsResults by remember { mutableStateOf<List<TestResultItemDto>>(emptyList()) }
+        var resendCooldownSeconds by remember { mutableStateOf(0) }
+        var isResendingCode by remember { mutableStateOf(false) }
+        var resendExhausted by remember { mutableStateOf(false) }
+        var resendCount by remember { mutableStateOf(0) }
 
         val scope = rememberCoroutineScope()
+
+        LaunchedEffect(resendCooldownSeconds) {
+            if (resendCooldownSeconds > 0) {
+                delay(1000)
+                resendCooldownSeconds -= 1
+            }
+        }
 
         fun navigateTo(screen: Screen) {
             stack.add(screen)
@@ -82,6 +95,10 @@ fun App() {
             supportErrorMessage = null
             isLoadingStats = false
             statsResults = emptyList()
+            resendCooldownSeconds = 0
+            isResendingCode = false
+            resendExhausted = false
+            resendCount = 0
         }
 
         val showBackButton = stack.size > 1 && currentScreen != Screen.Pending
@@ -148,6 +165,10 @@ fun App() {
                                         if (response.success) {
                                             pendingUsername = user.username
                                             pendingPassword = user.password
+                                            resendCooldownSeconds = 0
+                                            isResendingCode = false
+                                            resendExhausted = false
+                                            resendCount = 0
                                             navigateTo(Screen.VerifyCode(user.email))
                                         } else {
                                             errorMessage = response.message
@@ -216,7 +237,39 @@ fun App() {
                                     }
                                     isVerifyingCode = false
                                 }
-                            }
+                            },
+                            resendCooldownSeconds = resendCooldownSeconds,
+                            isResending = isResendingCode,
+                            resendExhausted = resendExhausted,
+                            onResendCode = {
+                                scope.launch {
+                                    isResendingCode = true
+                                    verifyErrorMessage = null
+                                    try {
+                                        val response = ApiClient.resendCode(ResendCodeRequestDto(username = pendingUsername!!))
+                                        if (response.success) {
+                                            resendCount += 1
+                                            if (resendCount >= 3) {
+                                                resendExhausted = true
+                                            } else {
+                                                resendCooldownSeconds = 60
+                                            }
+                                        } else {
+                                            verifyErrorMessage = response.message
+                                            val cooldownMatch = Regex("\\d+").find(response.message ?: "")
+                                            if (cooldownMatch != null) {
+                                                resendCooldownSeconds = cooldownMatch.value.toInt()
+                                            } else {
+                                                resendExhausted = true
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        verifyErrorMessage = "Server unreachable: ${e.message}"
+                                    }
+                                    isResendingCode = false
+                                }
+                            },
+                            onContactSupport = { navigateTo(Screen.Support) }
                         )
                     }
 
@@ -231,7 +284,7 @@ fun App() {
                                     try {
                                         val response = ApiClient.sendSupportRequest(
                                             SupportRequestDto(
-                                                username = loggedInUsername ?: "unknown",
+                                                username = loggedInUsername ?: pendingUsername ?: "unknown",
                                                 message = message,
                                                 phone = phone.ifBlank { null },
                                                 email = email.ifBlank { null }

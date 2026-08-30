@@ -71,6 +71,11 @@ data class StatsResponseDto(
     val results: List<TestResultItemDto>
 )
 
+@Serializable
+data class ResendCodeRequestDto(
+    val username: String
+)
+
 object ApiClient {
     // ВАЖНО: для Android-эмулятора localhost сервера — это 10.0.2.2, а не 127.0.0.1
     // Для Desktop — 127.0.0.1 подходит
@@ -112,6 +117,13 @@ object ApiClient {
 
     suspend fun verifyRegistration(request: VerifyRegistrationRequestDto): AuthResponseDto {
         return client.post("$BASE_URL/verify-registration") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    suspend fun resendCode(request: ResendCodeRequestDto): AuthResponseDto {
+        return client.post("$BASE_URL/resend-code") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

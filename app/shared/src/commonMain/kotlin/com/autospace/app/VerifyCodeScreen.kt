@@ -9,6 +9,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +26,12 @@ fun VerifyCodeScreen(
     email: String,
     errorMessage: String?,
     isVerifying: Boolean,
-    onVerify: (code: String) -> Unit
+    onVerify: (code: String) -> Unit,
+    resendCooldownSeconds: Int,
+    isResending: Boolean,
+    resendExhausted: Boolean,
+    onResendCode: () -> Unit,
+    onContactSupport: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
 
@@ -67,6 +73,35 @@ fun VerifyCodeScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
         ) {
             Text(if (isVerifying) "Проверка..." else "Подтвердить")
+        }
+
+        when {
+            resendExhausted -> {
+                Text(
+                    text = "Код не приходит? Похоже, что-то пошло не так с доставкой письма",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+                TextButton(onClick = onContactSupport) {
+                    Text("Написать в поддержку")
+                }
+            }
+            resendCooldownSeconds > 0 -> {
+                Text(
+                    text = "Отправить код повторно можно через $resendCooldownSeconds сек.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
+            else -> {
+                TextButton(
+                    onClick = onResendCode,
+                    enabled = !isResending
+                ) {
+                    Text(if (isResending) "Отправка..." else "Не пришёл код? Отправить снова")
+                }
+            }
         }
     }
 }
