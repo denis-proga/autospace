@@ -161,7 +161,7 @@ fun Application.module() {
             val request = call.receive<SupportRequest>()
 
             val user = transaction {
-                Users.select(Users.id, Users.supportMessagesCount)
+                Users.select(Users.id, Users.supportMessagesCount, Users.email)
                     .where { Users.username eq request.username }
                     .singleOrNull()
             }
@@ -184,7 +184,7 @@ fun Application.module() {
                     username = request.username,
                     message = request.message,
                     phone = request.phone,
-                    email = request.email
+                    email = request.email ?: user[Users.email]
                 )
 
                 call.respond(AuthResponse(success = true, message = "Support request sent"))
@@ -205,7 +205,7 @@ fun Application.module() {
                     username = request.username,
                     message = request.message,
                     phone = request.phone,
-                    email = request.email
+                    email = request.email ?: pending.email
                 )
 
                 call.respond(AuthResponse(success = true, message = "Support request sent"))
