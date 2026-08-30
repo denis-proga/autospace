@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AuthScreen(
     errorMessage: String?,
+    isLoading: Boolean,
     onModeChanged: () -> Unit,
     onLogin: (username: String, password: String) -> Unit,
     onRegister: (User) -> Unit
@@ -100,7 +101,11 @@ fun AuthScreen(
                         username.isNotBlank() && password.isNotBlank()
             }
 
-            Button(
+            LoadingButton(
+                text = if (isLoginMode) "Войти" else "Зарегистрироваться",
+                isLoading = isLoading,
+                enabled = canSubmit,
+                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     if (isLoginMode) {
                         onLogin(username, password)
@@ -115,18 +120,15 @@ fun AuthScreen(
                             )
                         )
                     }
-                },
-                enabled = canSubmit,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (isLoginMode) "Войти" else "Зарегистрироваться")
-            }
+                }
+            )
 
             TextButton(
                 onClick = {
                     isLoginMode = !isLoginMode
                     onModeChanged()
                 },
+                enabled = !isLoading,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(

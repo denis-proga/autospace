@@ -34,6 +34,7 @@ fun App() {
         var licenseStatus by remember { mutableStateOf<String?>(null) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
         var isChecking by remember { mutableStateOf(false) }
+        var isAuthenticating by remember { mutableStateOf(false) }
         var isSendingSupport by remember { mutableStateOf(false) }
         var supportSentSuccessfully by remember { mutableStateOf(false) }
         var supportErrorMessage by remember { mutableStateOf<String?>(null) }
@@ -99,6 +100,7 @@ fun App() {
             isResendingCode = false
             resendExhausted = false
             resendCount = 0
+            isAuthenticating = false
         }
 
         val showBackButton = stack.size > 1 && currentScreen != Screen.Pending
@@ -124,9 +126,11 @@ fun App() {
                     is Screen.Auth -> {
                         AuthScreen(
                             errorMessage = errorMessage,
+                            isLoading = isAuthenticating,
                             onModeChanged = { errorMessage = null },
                             onLogin = { username, password ->
                                 scope.launch {
+                                    isAuthenticating = true
                                     errorMessage = null
                                     try {
                                         val response = ApiClient.login(LoginRequestDto(username, password))
@@ -147,10 +151,12 @@ fun App() {
                                     } catch (e: Exception) {
                                         errorMessage = "Server unreachable: ${e.message}"
                                     }
+                                    isAuthenticating = false
                                 }
                             },
                             onRegister = { user ->
                                 scope.launch {
+                                    isAuthenticating = true
                                     errorMessage = null
                                     try {
                                         val response = ApiClient.register(
@@ -176,6 +182,7 @@ fun App() {
                                     } catch (e: Exception) {
                                         errorMessage = "Server unreachable: ${e.message}"
                                     }
+                                    isAuthenticating = false
                                 }
                             }
                         )
