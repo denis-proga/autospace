@@ -166,32 +166,53 @@ fun Application.module() {
                     .singleOrNull()
             }
 
-            if (user == null) {
-                call.respond(AuthResponse(success = false, message = "User not found"))
-                return@post
-            }
+            if (user != null) {
+                val currentCount = user[Users.supportMessagesCount]
 
-            val currentCount = user[Users.supportMessagesCount]
-
-            if (currentCount >= 3) {
-                call.respond(AuthResponse(success = false, message = "Вы превысили лимит сообщений в поддержку"))
-                return@post
-            }
-
-            transaction {
-                Users.update({ Users.id eq user[Users.id] }) {
-                    it[supportMessagesCount] = currentCount + 1
+                if (currentCount >= 3) {
+                    call.respond(AuthResponse(success = false, message = "Вы превысили лимит сообщений в поддержку"))
+                    return@post
                 }
+
+                transaction {
+                    Users.update({ Users.id eq user[Users.id] }) {
+                        it[supportMessagesCount] = currentCount + 1
+                    }
+                }
+
+                TelegramService.notifySupportRequest(
+                    username = request.username,
+                    message = request.message,
+                    phone = request.phone,
+                    email = request.email
+                )
+
+                call.respond(AuthResponse(success = true, message = "Support request sent"))
+                return@post
             }
 
-            TelegramService.notifySupportRequest(
-                username = request.username,
-                message = request.message,
-                phone = request.phone,
-                email = request.email
-            )
+            val pending = PendingRegistrations.findByUsername(request.username)
 
-            call.respond(AuthResponse(success = true, message = "Support request sent"))
+            if (pending != null) {
+                if (pending.supportMessagesCount >= 3) {
+                    call.respond(AuthResponse(success = false, message = "Вы превысили лимит сообщений в поддержку"))
+                    return@post
+                }
+
+                pending.supportMessagesCount++
+
+                TelegramService.notifySupportRequest(
+                    username = request.username,
+                    message = request.message,
+                    phone = request.phone,
+                    email = request.email
+                )
+
+                call.respond(AuthResponse(success = true, message = "Support request sent"))
+                return@post
+            }
+
+            call.respond(AuthResponse(success = false, message = "User not found"))
         }
 
         post("/results") {

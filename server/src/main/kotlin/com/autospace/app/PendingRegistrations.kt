@@ -12,7 +12,8 @@ data class PendingRegistration(
     val createdAt: Long,
     val lastSentAt: Long = createdAt,
     val resendCount: Int = 0,
-    var attempts: Int = 0
+    var attempts: Int = 0,
+    var supportMessagesCount: Int = 0
 )
 
 sealed class ResendResult {
@@ -98,5 +99,9 @@ object PendingRegistrations {
         )
 
         return ResendResult.Success(pending.email, newCode)
+    }
+
+    fun findByUsername(username: String): PendingRegistration? {
+        return store[username]
     }
 }
