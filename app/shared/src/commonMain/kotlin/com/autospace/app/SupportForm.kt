@@ -66,13 +66,13 @@ fun SupportForm(
                 color = Color(0xFF4CAF50)
             )
         } else {
-            Button(
-                onClick = { onSend(message, phone, email) },
-                enabled = message.isNotBlank() && !isSending,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (isSending) "Отправка..." else "Отправить")
-            }
+            LoadingButton(
+                text = "Отправить",
+                isLoading = isSending,
+                enabled = message.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { onSend(message, phone, email) }
+            )
         }
     }
 }

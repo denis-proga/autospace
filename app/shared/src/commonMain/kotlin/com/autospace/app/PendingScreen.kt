@@ -38,16 +38,12 @@ fun PendingScreen(
             modifier = Modifier.padding(top = 12.dp)
         )
 
-        if (isChecking) {
-            CircularProgressIndicator(modifier = Modifier.padding(top = 24.dp))
-        } else {
-            Button(
-                onClick = onCheckStatus,
-                modifier = Modifier.padding(top = 24.dp)
-            ) {
-                Text("Проверить статус")
-            }
-        }
+        LoadingButton(
+            text = "Проверить статус",
+            isLoading = isChecking,
+            modifier = Modifier.padding(top = 24.dp),
+            onClick = onCheckStatus
+        )
 
         TextButton(
             onClick = onGoToSupport,
