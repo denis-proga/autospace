@@ -1,0 +1,14 @@
+name: Keep AutoSpace Server Awake
+
+on:
+  schedule:
+    - cron: '*/10 8-17 * * *'
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping AutoSpace server
+        run: curl -s -o /dev/null -w "%{http_code}" https://autospace-hv2r.onrender.com/
