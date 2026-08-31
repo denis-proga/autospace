@@ -1,12 +1,15 @@
 package com.autospace.app
 
-import java.security.MessageDigest
+import org.mindrot.jbcrypt.BCrypt
 
 fun hashPassword(password: String): String {
-    val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
-    return bytes.joinToString("") { "%02x".format(it) }
+    return BCrypt.hashpw(password, BCrypt.gensalt(12))
 }
 
 fun verifyPassword(password: String, hash: String): Boolean {
-    return hashPassword(password) == hash
+    return try {
+        BCrypt.checkpw(password, hash)
+    } catch (e: IllegalArgumentException) {
+        false
+    }
 }
