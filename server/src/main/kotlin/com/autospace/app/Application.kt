@@ -138,7 +138,7 @@ fun Application.module() {
             val request = call.receive<LoginRequest>()
 
             val user = transaction {
-                Users.select(Users.passwordHash, Users.licenseStatus)
+                Users.select(Users.id, Users.passwordHash, Users.licenseStatus, Users.licenseExpiresAt)
                     .where { Users.username eq request.username }
                     .singleOrNull()
             }
@@ -148,11 +148,23 @@ fun Application.module() {
                 return@post
             }
 
+            var licenseStatus = user[Users.licenseStatus]
+            val expiresAt = user[Users.licenseExpiresAt]
+
+            if (licenseStatus == "ACTIVE" && expiresAt != null && expiresAt < System.currentTimeMillis()) {
+                licenseStatus = "EXPIRED"
+                transaction {
+                    Users.update({ Users.id eq user[Users.id] }) {
+                        it[Users.licenseStatus] = "EXPIRED"
+                    }
+                }
+            }
+
             call.respond(
                 AuthResponse(
                     success = true,
                     message = "Login successful",
-                    licenseStatus = user[Users.licenseStatus]
+                    licenseStatus = licenseStatus
                 )
             )
         }

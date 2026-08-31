@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.delay
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 
 @Composable
 fun AuthScreen(
@@ -49,6 +51,7 @@ fun AuthScreen(
     var email by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isPasswordVisible by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -97,6 +100,12 @@ fun AuthScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Пароль") },
+                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    TextButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                        Text(if (isPasswordVisible) "Скрыть" else "Показать")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
