@@ -149,7 +149,7 @@ fun App() {
                                             errorMessage = response.message
                                         }
                                     } catch (e: Exception) {
-                                        errorMessage = "Server unreachable: ${e.message}"
+                                        errorMessage = friendlyServerErrorMessage(e)
                                     }
                                     isAuthenticating = false
                                 }
@@ -180,7 +180,7 @@ fun App() {
                                             errorMessage = response.message
                                         }
                                     } catch (e: Exception) {
-                                        errorMessage = "Server unreachable: ${e.message}"
+                                        errorMessage = friendlyServerErrorMessage(e)
                                     }
                                     isAuthenticating = false
                                 }

@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.delay
 
 @Composable
 fun AuthScreen(
@@ -29,6 +32,17 @@ fun AuthScreen(
     onRegister: (User) -> Unit
 ) {
     var isLoginMode by remember { mutableStateOf(true) }
+
+    var showWakingHint by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            delay(5000)
+            showWakingHint = true
+        } else {
+            showWakingHint = false
+        }
+    }
 
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
@@ -122,6 +136,16 @@ fun AuthScreen(
                     }
                 }
             )
+
+            if (showWakingHint) {
+                Text(
+                    text = "Подключение к серверу… Обычно это занимает до минуты",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                )
+            }
 
             TextButton(
                 onClick = {
