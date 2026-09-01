@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.update
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import io.ktor.http.HttpStatusCode
 
 fun main() {
     initDatabase()
@@ -33,6 +34,8 @@ fun main() {
         .start(wait = true)
 }
 
+private const val IMAGE_BASE_URL = "https://raw.githubusercontent.com/denis-proga/autospace-assets/main/"
+
 fun Application.module() {
     install(ContentNegotiation) {
         json()
@@ -41,6 +44,45 @@ fun Application.module() {
     routing {
         get("/") {
             call.respondText("Hello, Ktor!")
+        }
+
+        get("/questions/{testNumber}") {
+            val testNumber = call.parameters["testNumber"]?.toIntOrNull()
+
+            if (testNumber == null) {
+                call.respond(HttpStatusCode.BadRequest, AuthResponse(success = false, message = "Invalid test number"))
+                return@get
+            }
+
+            val questions = transaction {
+                Questions.select(
+                    Questions.id, Questions.imageFilename, Questions.questionText,
+                    Questions.optionA, Questions.optionB, Questions.optionC, Questions.optionD,
+                    Questions.correctOption, Questions.explanation
+                )
+                    .where { Questions.testNumber eq testNumber }
+                    .orderBy(Questions.id)
+                    .map {
+                        QuestionResponse(
+                            id = it[Questions.id],
+                            imageUrl = IMAGE_BASE_URL + it[Questions.imageFilename],
+                            questionText = it[Questions.questionText],
+                            optionA = it[Questions.optionA],
+                            optionB = it[Questions.optionB],
+                            optionC = it[Questions.optionC],
+                            optionD = it[Questions.optionD],
+                            correctOption = it[Questions.correctOption],
+                            explanation = it[Questions.explanation]
+                        )
+                    }
+            }
+
+            if (questions.isEmpty()) {
+                call.respond(HttpStatusCode.NotFound, AuthResponse(success = false, message = "Questions not found for this test"))
+                return@get
+            }
+
+            call.respond(QuestionsListResponse(questions = questions))
         }
 
         post("/register") {

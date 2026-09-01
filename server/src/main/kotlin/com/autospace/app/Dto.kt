@@ -65,3 +65,21 @@ data class StatsResponse(
 data class ResendCodeRequest(
     val username: String
 )
+
+@Serializable
+data class QuestionResponse(
+    val id: Int,
+    val imageUrl: String,
+    val questionText: String,
+    val optionA: String,
+    val optionB: String,
+    val optionC: String?,
+    val optionD: String?,
+    val correctOption: String,
+    val explanation: String
+)
+
+@Serializable
+data class QuestionsListResponse(
+    val questions: List<QuestionResponse>
+)
