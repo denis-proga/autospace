@@ -71,9 +71,10 @@ fun TestScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (loadErrorMessage != null) {
+            val errorMessage = loadErrorMessage
+            if (errorMessage != null) {
                 Text(
-                    text = loadErrorMessage,
+                    text = errorMessage,
                     color = Color(0xFFF44336),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 16.dp)
