@@ -76,6 +76,24 @@ data class ResendCodeRequestDto(
     val username: String
 )
 
+@Serializable
+data class QuestionDto(
+    val id: Int,
+    val imageUrl: String,
+    val questionText: String,
+    val optionA: String,
+    val optionB: String,
+    val optionC: String?,
+    val optionD: String?,
+    val correctOption: String,
+    val explanation: String
+)
+
+@Serializable
+data class QuestionsListResponseDto(
+    val questions: List<QuestionDto>
+)
+
 object ApiClient {
     // ВАЖНО: для Android-эмулятора localhost сервера — это 10.0.2.2, а не 127.0.0.1
     // Для Desktop — 127.0.0.1 подходит
