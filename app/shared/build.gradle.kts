@@ -51,12 +51,9 @@ kotlin {
             implementation(libs.ktor.clientCore)
             implementation(libs.ktor.clientContentNegotiation)
             implementation(libs.ktor.serializationKotlinxJson)
-            implementation("io.coil-kt.coil3:coil-compose:3.6.1")
-            implementation("io.coil-kt.coil3:coil-network-ktor3:3.6.1")
         }
         jvmMain.dependencies {
             implementation(libs.ktor.clientCio)
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

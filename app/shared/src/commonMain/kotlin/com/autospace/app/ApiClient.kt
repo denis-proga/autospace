@@ -161,4 +161,8 @@ object ApiClient {
     suspend fun getQuestions(testNumber: Int): QuestionsListResponseDto {
         return client.get("$BASE_URL/questions/$testNumber").body()
     }
+
+    suspend fun fetchImageBytes(url: String): ByteArray {
+        return client.get(url).body()
+    }
 }

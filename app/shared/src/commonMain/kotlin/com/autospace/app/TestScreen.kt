@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 
 @Composable
@@ -139,9 +138,8 @@ fun TestScreen(
             }
         }
 
-        AsyncImage(
-            model = question.imageUrl,
-            contentDescription = null,
+        NetworkImage(
+            url = question.imageUrl,
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxWidth()
