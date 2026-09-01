@@ -139,4 +139,8 @@ object ApiClient {
     suspend fun getResults(username: String): StatsResponseDto {
         return client.get("$BASE_URL/results/$username").body()
     }
+
+    suspend fun getQuestions(testNumber: Int): QuestionsListResponseDto {
+        return client.get("$BASE_URL/questions/$testNumber").body()
+    }
 }

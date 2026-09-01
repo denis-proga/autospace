@@ -83,3 +83,21 @@ data class QuestionResponse(
 data class QuestionsListResponse(
     val questions: List<QuestionResponse>
 )
+
+@Serializable
+data class QuestionDto(
+    val id: Int,
+    val imageUrl: String,
+    val questionText: String,
+    val optionA: String,
+    val optionB: String,
+    val optionC: String?,
+    val optionD: String?,
+    val correctOption: String,
+    val explanation: String
+)
+
+@Serializable
+data class QuestionsListResponseDto(
+    val questions: List<QuestionDto>
+)
