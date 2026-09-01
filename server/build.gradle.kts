@@ -30,4 +30,5 @@ dependencies {
     implementation(libs.jakartaMail)
     implementation(libs.postgresql)
     implementation(libs.hikari)
+    implementation("org.mindrot:jbcrypt:0.4")
 }
