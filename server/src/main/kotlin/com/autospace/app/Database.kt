@@ -34,6 +34,21 @@ object TestResults : Table("test_results") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object Questions : Table("questions") {
+    val id = integer("id").autoIncrement()
+    val testNumber = integer("test_number")
+    val imageFilename = varchar("image_filename", 255).uniqueIndex()
+    val questionText = text("question_text")
+    val optionA = text("option_a")
+    val optionB = text("option_b")
+    val optionC = text("option_c").nullable()
+    val optionD = text("option_d").nullable()
+    val correctOption = varchar("correct_option", 1) // A, B, C или D
+    val explanation = text("explanation")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 fun initDatabase() {
     val databaseUrl = System.getenv("DATABASE_URL")
 
@@ -58,6 +73,6 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.create(Users, TestResults)
+        SchemaUtils.create(Users, TestResults, Questions)
     }
 }
