@@ -348,6 +348,7 @@ fun App() {
 
                     is Screen.MainMenu -> {
                         MainMenuScreen(
+                            username = loggedInUsername ?: "",
                             onTestSelected = { test, mode ->
                                 navigateTo(Screen.Test(test, mode))
                             },

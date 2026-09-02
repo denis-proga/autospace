@@ -179,6 +179,26 @@ fun Application.module() {
             }
         }
 
+        post("/reset-progress") {
+            val request = call.receive<ResetProgressRequest>()
+
+            val userId = transaction {
+                Users.select(Users.id).where { Users.username eq request.username }.singleOrNull()?.get(Users.id)
+            }
+
+            if (userId == null) {
+                call.respond(AuthResponse(success = false, message = "User not found"))
+                return@post
+            }
+
+            transaction {
+                TestResults.deleteWhere { TestResults.userId eq userId }
+                TestProgress.deleteWhere { TestProgress.userId eq userId }
+            }
+
+            call.respond(AuthResponse(success = true, message = "Progress reset"))
+        }
+
         post("/login") {
             val request = call.receive<LoginRequest>()
 

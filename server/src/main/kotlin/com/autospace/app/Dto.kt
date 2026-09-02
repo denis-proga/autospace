@@ -119,3 +119,8 @@ data class ProgressResponse(
     val currentIndex: Int? = null,
     val secondsLeft: Int? = null
 )
+
+@Serializable
+data class ResetProgressRequest(
+    val username: String
+)
