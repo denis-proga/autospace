@@ -94,6 +94,24 @@ data class QuestionsListResponseDto(
     val questions: List<QuestionDto>
 )
 
+@Serializable
+data class SaveProgressRequestDto(
+    val username: String,
+    val testNumber: Int,
+    val mode: String,
+    val answersData: String,
+    val currentIndex: Int,
+    val secondsLeft: Int? = null
+)
+
+@Serializable
+data class ProgressResponseDto(
+    val found: Boolean,
+    val answersData: String? = null,
+    val currentIndex: Int? = null,
+    val secondsLeft: Int? = null
+)
+
 object ApiClient {
     // ВАЖНО: для Android-эмулятора localhost сервера — это 10.0.2.2, а не 127.0.0.1
     // Для Desktop — 127.0.0.1 подходит
@@ -110,6 +128,17 @@ object ApiClient {
             requestTimeoutMillis = 90_000
             connectTimeoutMillis = 30_000
         }
+    }
+
+    suspend fun saveProgress(request: SaveProgressRequestDto): AuthResponseDto {
+        return client.post("$BASE_URL/save-progress") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    suspend fun getProgress(username: String, testNumber: Int, mode: String): ProgressResponseDto {
+        return client.get("$BASE_URL/progress/$username/$testNumber/$mode").body()
     }
 
     suspend fun register(request: RegisterRequestDto): AuthResponseDto {

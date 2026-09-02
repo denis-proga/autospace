@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -24,6 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun AuthScreen(
@@ -53,6 +55,30 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
+    val canSubmit = if (isLoginMode) {
+        username.isNotBlank() && password.isNotBlank()
+    } else {
+        firstName.isNotBlank() && lastName.isNotBlank() && email.isNotBlank() &&
+                username.isNotBlank() && password.isNotBlank()
+    }
+
+    fun submit() {
+        if (!canSubmit) return
+        if (isLoginMode) {
+            onLogin(username, password)
+        } else {
+            onRegister(
+                User(
+                    firstName = firstName,
+                    lastName = lastName,
+                    email = email,
+                    username = username,
+                    password = password
+                )
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -74,18 +100,24 @@ fun AuthScreen(
                     value = firstName,
                     onValueChange = { firstName = it },
                     label = { Text("Имя") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = lastName,
                     onValueChange = { lastName = it },
                     label = { Text("Фамилия") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text("Почта") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -94,6 +126,8 @@ fun AuthScreen(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Логин") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
@@ -106,6 +140,9 @@ fun AuthScreen(
                         Text(if (isPasswordVisible) "Скрыть" else "Показать")
                     }
                 },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -117,33 +154,12 @@ fun AuthScreen(
                 )
             }
 
-            val canSubmit = if (isLoginMode) {
-                username.isNotBlank() && password.isNotBlank()
-            } else {
-                firstName.isNotBlank() && lastName.isNotBlank() && email.isNotBlank() &&
-                        username.isNotBlank() && password.isNotBlank()
-            }
-
             LoadingButton(
                 text = if (isLoginMode) "Войти" else "Зарегистрироваться",
                 isLoading = isLoading,
                 enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    if (isLoginMode) {
-                        onLogin(username, password)
-                    } else {
-                        onRegister(
-                            User(
-                                firstName = firstName,
-                                lastName = lastName,
-                                email = email,
-                                username = username,
-                                password = password
-                            )
-                        )
-                    }
-                }
+                onClick = { submit() }
             )
 
             if (showWakingHint) {

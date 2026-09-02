@@ -20,6 +20,8 @@ import org.jetbrains.exposed.sql.update
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import io.ktor.http.HttpStatusCode
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 
 fun main() {
     initDatabase()
@@ -211,6 +213,95 @@ fun Application.module() {
             )
         }
 
+        post("/save-progress") {
+            val request = call.receive<SaveProgressRequest>()
+
+            val user = transaction {
+                Users.select(Users.id).where { Users.username eq request.username }.singleOrNull()
+            }
+
+            if (user == null) {
+                call.respond(AuthResponse(success = false, message = "User not found"))
+                return@post
+            }
+
+            val userId = user[Users.id]
+
+            transaction {
+                val existing = TestProgress.select(TestProgress.id)
+                    .where {
+                        (TestProgress.userId eq userId) and
+                                (TestProgress.testNumber eq request.testNumber) and
+                                (TestProgress.mode eq request.mode)
+                    }.singleOrNull()
+
+                if (existing != null) {
+                    TestProgress.update({ TestProgress.id eq existing[TestProgress.id] }) {
+                        it[answersData] = request.answersData
+                        it[currentIndex] = request.currentIndex
+                        it[secondsLeft] = request.secondsLeft
+                        it[updatedAt] = System.currentTimeMillis()
+                    }
+                } else {
+                    TestProgress.insert {
+                        it[TestProgress.userId] = userId
+                        it[testNumber] = request.testNumber
+                        it[mode] = request.mode
+                        it[answersData] = request.answersData
+                        it[currentIndex] = request.currentIndex
+                        it[secondsLeft] = request.secondsLeft
+                        it[updatedAt] = System.currentTimeMillis()
+                    }
+                }
+            }
+
+            call.respond(AuthResponse(success = true, message = "Progress saved"))
+        }
+
+        get("/progress/{username}/{testNumber}/{mode}") {
+            val username = call.parameters["username"]
+            val testNumber = call.parameters["testNumber"]?.toIntOrNull()
+            val mode = call.parameters["mode"]
+
+            if (username == null || testNumber == null || mode == null) {
+                call.respond(HttpStatusCode.BadRequest, ProgressResponse(found = false))
+                return@get
+            }
+
+            val user = transaction {
+                Users.select(Users.id).where { Users.username eq username }.singleOrNull()
+            }
+
+            if (user == null) {
+                call.respond(ProgressResponse(found = false))
+                return@get
+            }
+
+            val userId = user[Users.id]
+
+            val progress = transaction {
+                TestProgress.select(TestProgress.answersData, TestProgress.currentIndex, TestProgress.secondsLeft)
+                    .where {
+                        (TestProgress.userId eq userId) and
+                                (TestProgress.testNumber eq testNumber) and
+                                (TestProgress.mode eq mode)
+                    }.singleOrNull()
+            }
+
+            if (progress == null) {
+                call.respond(ProgressResponse(found = false))
+            } else {
+                call.respond(
+                    ProgressResponse(
+                        found = true,
+                        answersData = progress[TestProgress.answersData],
+                        currentIndex = progress[TestProgress.currentIndex],
+                        secondsLeft = progress[TestProgress.secondsLeft]
+                    )
+                )
+            }
+        }
+
         post("/support") {
             val request = call.receive<SupportRequest>()
 
@@ -281,6 +372,16 @@ fun Application.module() {
             )
 
             if (saved) {
+                transaction {
+                    val user = Users.select(Users.id).where { Users.username eq request.username }.singleOrNull()
+                    if (user != null) {
+                        TestProgress.deleteWhere {
+                            (TestProgress.userId eq user[Users.id]) and
+                                    (TestProgress.testNumber eq request.testNumber) and
+                                    (TestProgress.mode eq request.mode)
+                        }
+                    }
+                }
                 call.respond(AuthResponse(success = true, message = "Result saved"))
             } else {
                 call.respond(AuthResponse(success = false, message = "User not found"))

@@ -50,6 +50,22 @@ object Questions : Table("questions") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object TestProgress : Table("test_progress") {
+    val id = integer("id").autoIncrement()
+    val userId = integer("user_id").references(Users.id)
+    val testNumber = integer("test_number")
+    val mode = varchar("mode", 20)
+    val answersData = text("answers_data")
+    val currentIndex = integer("current_index")
+    val secondsLeft = integer("seconds_left").nullable()
+    val updatedAt = long("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+    init {
+        uniqueIndex(userId, testNumber, mode)
+    }
+}
+
 fun initDatabase() {
     val databaseUrl = System.getenv("DATABASE_URL")
 
@@ -75,5 +91,6 @@ fun initDatabase() {
 
     transaction {
         SchemaUtils.create(Users, TestResults, Questions)
+        SchemaUtils.create(Users, TestResults, Questions, TestProgress)
     }
 }

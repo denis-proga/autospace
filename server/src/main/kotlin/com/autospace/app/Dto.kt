@@ -101,3 +101,21 @@ data class QuestionDto(
 data class QuestionsListResponseDto(
     val questions: List<QuestionDto>
 )
+
+@Serializable
+data class SaveProgressRequest(
+    val username: String,
+    val testNumber: Int,
+    val mode: String,
+    val answersData: String,
+    val currentIndex: Int,
+    val secondsLeft: Int? = null
+)
+
+@Serializable
+data class ProgressResponse(
+    val found: Boolean,
+    val answersData: String? = null,
+    val currentIndex: Int? = null,
+    val secondsLeft: Int? = null
+)

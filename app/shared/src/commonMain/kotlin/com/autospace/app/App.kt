@@ -378,6 +378,8 @@ fun App() {
                         TestScreen(
                             test = screen.test,
                             mode = screen.mode,
+                            username = loggedInUsername ?: "",
+                            scope = scope,
                             onFinish = { navigateBack() },
                             onSaveResult = { correctCount, total ->
                                 scope.launch {
