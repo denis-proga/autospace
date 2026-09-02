@@ -20,10 +20,11 @@ col_index = {name: idx for idx, name in enumerate(header_row) if name}
 
 required = ["test_number", "image_filename", "question_text_ru", "option_a_ru",
             "option_b_ru", "option_c_ru", "option_d_ru", "correct_option", "explanation_ru", "question_key"]
-for col_name in required:
-    if col_name not in col_index:
-        print(f"В таблице нет колонки {col_name}")
-        sys.exit(1)
+missing = [c for c in required if c not in col_index]
+if missing:
+    print(f"В таблице нет колонок: {missing}")
+    print(f"Реально найденные заголовки: {list(col_index.keys())}")
+    sys.exit(1)
 
 conn = psycopg2.connect(DATABASE_URL)
 cur = conn.cursor()

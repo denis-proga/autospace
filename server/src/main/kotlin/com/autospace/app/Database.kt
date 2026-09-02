@@ -74,7 +74,6 @@ fun initDatabase() {
     }
 
     transaction {
-        exec("DROP TABLE IF EXISTS questions")
         SchemaUtils.create(Users, TestResults, Questions)
     }
 }
