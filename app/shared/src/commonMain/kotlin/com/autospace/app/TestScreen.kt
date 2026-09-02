@@ -64,6 +64,7 @@ private fun parseAnswers(raw: String): Map<Int, Int> {
 fun TestScreen(
     test: TestInfo,
     mode: TestMode,
+    language: String,
     username: String,
     scope: CoroutineScope,
     onFinish: () -> Unit,
@@ -87,7 +88,7 @@ fun TestScreen(
         questions = null
         loadErrorMessage = null
         try {
-            val response = ApiClient.getQuestions(test.number)
+            val response = ApiClient.getQuestions(test.number, language)
             questions = response.questions.map { it.toQuestion() }
         } catch (e: Exception) {
             loadErrorMessage = friendlyServerErrorMessage(e, strings)

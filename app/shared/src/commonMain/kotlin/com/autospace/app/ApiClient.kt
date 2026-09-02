@@ -201,8 +201,8 @@ object ApiClient {
         return client.get("$BASE_URL/results/$username").body()
     }
 
-    suspend fun getQuestions(testNumber: Int): QuestionsListResponseDto {
-        val response = client.get("$BASE_URL/questions/$testNumber")
+    suspend fun getQuestions(testNumber: Int, lang: String): QuestionsListResponseDto {
+        val response = client.get("$BASE_URL/questions/$testNumber?lang=$lang")
         if (response.status == HttpStatusCode.NotFound) {
             throw QuestionsNotFoundException(testNumber)
         }

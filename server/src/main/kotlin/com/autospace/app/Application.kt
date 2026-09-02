@@ -23,6 +23,7 @@ import io.ktor.http.HttpStatusCode
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.selectAll
 
 fun main() {
     initDatabase()
@@ -39,6 +40,15 @@ fun main() {
 
 private const val IMAGE_BASE_URL = "https://raw.githubusercontent.com/denis-proga/autospace-assets/main/"
 
+private fun localizedText(base: String, localized: String?): String {
+    return if (!localized.isNullOrBlank()) localized else base
+}
+
+private fun localizedNullableText(base: String?, localized: String?): String? {
+    if (base == null) return null
+    return if (!localized.isNullOrBlank()) localized else base
+}
+
 fun Application.module() {
     install(ContentNegotiation) {
         json()
@@ -51,6 +61,7 @@ fun Application.module() {
 
         get("/questions/{testNumber}") {
             val testNumber = call.parameters["testNumber"]?.toIntOrNull()
+            val lang = call.request.queryParameters["lang"] ?: "ru"
 
             if (testNumber == null) {
                 call.respond(HttpStatusCode.BadRequest, AuthResponse(success = false, message = "Invalid test number"))
@@ -58,24 +69,70 @@ fun Application.module() {
             }
 
             val questions = transaction {
-                Questions.select(
-                    Questions.id, Questions.imageFilename, Questions.questionText,
-                    Questions.optionA, Questions.optionB, Questions.optionC, Questions.optionD,
-                    Questions.correctOption, Questions.explanation
-                )
+                Questions.selectAll()
                     .where { Questions.testNumber eq testNumber }
                     .orderBy(Questions.id)
-                    .map {
+                    .map { row ->
+                        val qText: String
+                        val oA: String
+                        val oB: String
+                        val oC: String?
+                        val oD: String?
+                        val expl: String
+
+                        when (lang) {
+                            "en" -> {
+                                qText = localizedText(row[Questions.questionText], row[Questions.questionTextEn])
+                                oA = localizedText(row[Questions.optionA], row[Questions.optionAEn])
+                                oB = localizedText(row[Questions.optionB], row[Questions.optionBEn])
+                                oC = localizedNullableText(row[Questions.optionC], row[Questions.optionCEn])
+                                oD = localizedNullableText(row[Questions.optionD], row[Questions.optionDEn])
+                                expl = localizedText(row[Questions.explanation], row[Questions.explanationEn])
+                            }
+                            "es" -> {
+                                qText = localizedText(row[Questions.questionText], row[Questions.questionTextEs])
+                                oA = localizedText(row[Questions.optionA], row[Questions.optionAEs])
+                                oB = localizedText(row[Questions.optionB], row[Questions.optionBEs])
+                                oC = localizedNullableText(row[Questions.optionC], row[Questions.optionCEs])
+                                oD = localizedNullableText(row[Questions.optionD], row[Questions.optionDEs])
+                                expl = localizedText(row[Questions.explanation], row[Questions.explanationEs])
+                            }
+                            "de" -> {
+                                qText = localizedText(row[Questions.questionText], row[Questions.questionTextDe])
+                                oA = localizedText(row[Questions.optionA], row[Questions.optionADe])
+                                oB = localizedText(row[Questions.optionB], row[Questions.optionBDe])
+                                oC = localizedNullableText(row[Questions.optionC], row[Questions.optionCDe])
+                                oD = localizedNullableText(row[Questions.optionD], row[Questions.optionDDe])
+                                expl = localizedText(row[Questions.explanation], row[Questions.explanationDe])
+                            }
+                            "uk" -> {
+                                qText = localizedText(row[Questions.questionText], row[Questions.questionTextUk])
+                                oA = localizedText(row[Questions.optionA], row[Questions.optionAUk])
+                                oB = localizedText(row[Questions.optionB], row[Questions.optionBUk])
+                                oC = localizedNullableText(row[Questions.optionC], row[Questions.optionCUk])
+                                oD = localizedNullableText(row[Questions.optionD], row[Questions.optionDUk])
+                                expl = localizedText(row[Questions.explanation], row[Questions.explanationUk])
+                            }
+                            else -> {
+                                qText = row[Questions.questionText]
+                                oA = row[Questions.optionA]
+                                oB = row[Questions.optionB]
+                                oC = row[Questions.optionC]
+                                oD = row[Questions.optionD]
+                                expl = row[Questions.explanation]
+                            }
+                        }
+
                         QuestionResponse(
-                            id = it[Questions.id],
-                            imageUrl = IMAGE_BASE_URL + it[Questions.imageFilename],
-                            questionText = it[Questions.questionText],
-                            optionA = it[Questions.optionA],
-                            optionB = it[Questions.optionB],
-                            optionC = it[Questions.optionC],
-                            optionD = it[Questions.optionD],
-                            correctOption = it[Questions.correctOption],
-                            explanation = it[Questions.explanation]
+                            id = row[Questions.id],
+                            imageUrl = IMAGE_BASE_URL + row[Questions.imageFilename],
+                            questionText = qText,
+                            optionA = oA,
+                            optionB = oB,
+                            optionC = oC,
+                            optionD = oD,
+                            correctOption = row[Questions.correctOption],
+                            explanation = expl
                         )
                     }
             }

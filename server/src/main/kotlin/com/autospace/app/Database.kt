@@ -47,6 +47,34 @@ object Questions : Table("questions") {
     val correctOption = varchar("correct_option", 1)
     val explanation = text("explanation")
 
+    val questionTextEn = text("question_text_en").nullable()
+    val optionAEn = text("option_a_en").nullable()
+    val optionBEn = text("option_b_en").nullable()
+    val optionCEn = text("option_c_en").nullable()
+    val optionDEn = text("option_d_en").nullable()
+    val explanationEn = text("explanation_en").nullable()
+
+    val questionTextEs = text("question_text_es").nullable()
+    val optionAEs = text("option_a_es").nullable()
+    val optionBEs = text("option_b_es").nullable()
+    val optionCEs = text("option_c_es").nullable()
+    val optionDEs = text("option_d_es").nullable()
+    val explanationEs = text("explanation_es").nullable()
+
+    val questionTextDe = text("question_text_de").nullable()
+    val optionADe = text("option_a_de").nullable()
+    val optionBDe = text("option_b_de").nullable()
+    val optionCDe = text("option_c_de").nullable()
+    val optionDDe = text("option_d_de").nullable()
+    val explanationDe = text("explanation_de").nullable()
+
+    val questionTextUk = text("question_text_uk").nullable()
+    val optionAUk = text("option_a_uk").nullable()
+    val optionBUk = text("option_b_uk").nullable()
+    val optionCUk = text("option_c_uk").nullable()
+    val optionDUk = text("option_d_uk").nullable()
+    val explanationUk = text("explanation_uk").nullable()
+
     override val primaryKey = PrimaryKey(id)
 }
 
@@ -90,7 +118,6 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.create(Users, TestResults, Questions)
         SchemaUtils.create(Users, TestResults, Questions, TestProgress)
     }
 }

@@ -415,6 +415,7 @@ fun App() {
                                 TestScreen(
                                     test = screen.test,
                                     mode = screen.mode,
+                                    language = selectedLanguage.code,
                                     username = loggedInUsername ?: "",
                                     scope = scope,
                                     onFinish = { navigateBack() },
