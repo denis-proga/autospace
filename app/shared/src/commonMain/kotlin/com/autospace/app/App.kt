@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,21 +19,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.remember
 
 @Composable
 @Preview
 fun App() {
-    MaterialTheme {
+    var appTheme by remember { mutableStateOf(AppTheme.Dark) }
+
+    MaterialTheme(colorScheme = autoSpaceColorScheme(appTheme)) {
         val stack = remember { mutableStateListOf<Screen>(Screen.LanguageSelection) }
         val currentScreen = stack.last()
 
-        var selectedLanguage by remember { mutableStateOf<Language?>(null) }
+        var selectedLanguage by remember { mutableStateOf(Language.RUSSIAN) }
         var loggedInUsername by remember { mutableStateOf<String?>(null) }
         var loggedInPassword by remember { mutableStateOf<String?>(null) }
         var licenseStatus by remember { mutableStateOf<String?>(null) }
@@ -112,11 +119,30 @@ fun App() {
         BoxWithConstraints {
             val windowSizeClass = windowSizeClassFor(maxWidth)
 
-            CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
+            CompositionLocalProvider(
+                LocalWindowSizeClass provides windowSizeClass,
+                LocalAppTheme provides appTheme,
+                LocalSemanticColors provides semanticColorsFor(appTheme),
+                LocalStrings provides stringsFor(selectedLanguage)
+            ) {
                 Column {
-                    if (showBackButton) {
-                        TextButton(onClick = { navigateBack() }, modifier = Modifier.padding(8.dp)) {
-                            Text("← Назад")
+                    val strings = LocalStrings.current
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (showBackButton) {
+                            TextButton(onClick = { navigateBack() }) {
+                                Text(strings.commonBack)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        TextButton(onClick = {
+                            appTheme = if (appTheme == AppTheme.Dark) AppTheme.Light else AppTheme.Dark
+                        }) {
+                            Text(if (appTheme == AppTheme.Dark) strings.themeSwitchToLight else strings.themeSwitchToDark)
                         }
                     }
 
@@ -157,7 +183,7 @@ fun App() {
                                                     errorMessage = response.message
                                                 }
                                             } catch (e: Exception) {
-                                                errorMessage = friendlyServerErrorMessage(e)
+                                                errorMessage = friendlyServerErrorMessage(e, strings)
                                             }
                                             isAuthenticating = false
                                         }
@@ -173,7 +199,8 @@ fun App() {
                                                         lastName = user.lastName,
                                                         email = user.email,
                                                         username = user.username,
-                                                        password = user.password
+                                                        password = user.password,
+                                                        language = selectedLanguage.code,
                                                     )
                                                 )
                                                 if (response.success) {
@@ -188,7 +215,7 @@ fun App() {
                                                     errorMessage = response.message
                                                 }
                                             } catch (e: Exception) {
-                                                errorMessage = friendlyServerErrorMessage(e)
+                                                errorMessage = friendlyServerErrorMessage(e, strings)
                                             }
                                             isAuthenticating = false
                                         }
@@ -248,7 +275,7 @@ fun App() {
                                                     verifyErrorMessage = response.message
                                                 }
                                             } catch (e: Exception) {
-                                                verifyErrorMessage = "Server unreachable: ${e.message}"
+                                                verifyErrorMessage = friendlyServerErrorMessage(e, strings)
                                             }
                                             isVerifyingCode = false
                                         }
@@ -279,7 +306,7 @@ fun App() {
                                                     }
                                                 }
                                             } catch (e: Exception) {
-                                                verifyErrorMessage = "Server unreachable: ${e.message}"
+                                                verifyErrorMessage = friendlyServerErrorMessage(e, strings)
                                             }
                                             isResendingCode = false
                                         }

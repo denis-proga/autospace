@@ -24,6 +24,18 @@ private data class ResendEmailRequest(
     val text: String
 )
 
+private data class EmailTemplate(val subject: String, val body: String)
+
+private fun emailTemplateFor(language: String, code: String): EmailTemplate {
+    return when (language) {
+        "en" -> EmailTemplate("AutoSpace — verification code", "Your registration verification code: $code\n\nIf you didn't register with AutoSpace, just ignore this email.")
+        "es" -> EmailTemplate("AutoSpace — código de verificación", "Tu código de verificación de registro: $code\n\nSi no te registraste en AutoSpace, ignora este correo.")
+        "de" -> EmailTemplate("AutoSpace — Bestätigungscode", "Ihr Bestätigungscode für die Registrierung: $code\n\nWenn Sie sich nicht bei AutoSpace registriert haben, ignorieren Sie diese E-Mail einfach.")
+        "uk" -> EmailTemplate("AutoSpace — код підтвердження", "Ваш код підтвердження реєстрації: $code\n\nЯкщо ви не реєструвалися в AutoSpace, просто проігноруйте цей лист.")
+        else -> EmailTemplate("AutoSpace — код подтверждения", "Ваш код подтверждения регистрации: $code\n\nЕсли вы не регистрировались в AutoSpace, просто проигнорируйте это письмо.")
+    }
+}
+
 object EmailService {
     private val client = HttpClient {
         install(ContentNegotiation) { json() }
@@ -33,11 +45,13 @@ object EmailService {
         }
     }
 
-    suspend fun sendVerificationCode(toEmail: String, code: String): Boolean {
+    suspend fun sendVerificationCode(toEmail: String, code: String, language: String = "ru"): Boolean {
         if (resendApiKey.isEmpty()) {
             println("Resend not configured, skipping email send. Code would have been: $code")
             return false
         }
+
+        val template = emailTemplateFor(language, code)
 
         return try {
             val response = client.post("https://api.resend.com/emails") {
@@ -47,8 +61,8 @@ object EmailService {
                     ResendEmailRequest(
                         from = resendFromAddress,
                         to = listOf(toEmail),
-                        subject = "AutoSpace — код подтверждения",
-                        text = "Ваш код подтверждения регистрации: $code\n\nЕсли вы не регистрировались в AutoSpace, просто проигнорируйте это письмо."
+                        subject = template.subject,
+                        text = template.body
                     )
                 )
             }

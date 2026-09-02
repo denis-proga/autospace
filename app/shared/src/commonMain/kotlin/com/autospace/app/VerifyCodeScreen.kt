@@ -35,6 +35,7 @@ fun VerifyCodeScreen(
     onResendCode: () -> Unit,
     onContactSupport: () -> Unit
 ) {
+    val strings = LocalStrings.current
     var code by remember { mutableStateOf("") }
 
     val windowSizeClass = LocalWindowSizeClass.current
@@ -57,13 +58,13 @@ fun VerifyCodeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Подтверждение почты",
+                text = strings.verifyTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Мы отправили код подтверждения на $email",
+                text = strings.verifyDescription(email),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp)
@@ -72,7 +73,7 @@ fun VerifyCodeScreen(
             OutlinedTextField(
                 value = code,
                 onValueChange = { code = it },
-                label = { Text("Код из письма") },
+                label = { Text(strings.verifyCodeLabel) },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -85,7 +86,7 @@ fun VerifyCodeScreen(
             }
 
             LoadingButton(
-                text = "Подтвердить",
+                text = strings.verifyConfirm,
                 isLoading = isVerifying,
                 enabled = code.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -95,18 +96,18 @@ fun VerifyCodeScreen(
             when {
                 resendExhausted -> {
                     Text(
-                        text = "Код не приходит? Похоже, что-то пошло не так с доставкой письма",
+                        text = strings.verifyCodeProblem,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                     )
                     TextButton(onClick = onContactSupport) {
-                        Text("Написать в поддержку")
+                        Text(strings.commonSupport)
                     }
                 }
                 resendCooldownSeconds > 0 -> {
                     Text(
-                        text = "Отправить код повторно можно через $resendCooldownSeconds сек.",
+                        text = strings.verifyResendInText(resendCooldownSeconds),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                     )
@@ -116,7 +117,7 @@ fun VerifyCodeScreen(
                         onClick = onResendCode,
                         enabled = !isResending
                     ) {
-                        Text(if (isResending) "Отправка..." else "Не пришёл код? Отправить снова")
+                        Text(if (isResending) strings.verifyResendSending else strings.verifyResendLink)
                     }
                 }
             }

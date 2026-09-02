@@ -19,7 +19,8 @@ data class RegisterRequestDto(
     val lastName: String,
     val email: String,
     val username: String,
-    val password: String
+    val password: String,
+    val language: String
 )
 
 @Serializable

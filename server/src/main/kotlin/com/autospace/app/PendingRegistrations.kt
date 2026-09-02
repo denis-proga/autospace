@@ -8,6 +8,7 @@ data class PendingRegistration(
     val email: String,
     val username: String,
     val password: String,
+    val language: String,
     val code: String,
     val createdAt: Long,
     val lastSentAt: Long = createdAt,
@@ -17,7 +18,7 @@ data class PendingRegistration(
 )
 
 sealed class ResendResult {
-    data class Success(val email: String, val code: String) : ResendResult()
+    data class Success(val email: String, val code: String, val language: String) : ResendResult()
     data class Cooldown(val secondsLeft: Long) : ResendResult()
     object TooManyAttempts : ResendResult()
     object NotFound : ResendResult()
@@ -39,7 +40,8 @@ object PendingRegistrations {
         lastName: String,
         email: String,
         username: String,
-        password: String
+        password: String,
+        language: String
     ): String {
         val code = generateCode()
         store[username] = PendingRegistration(
@@ -48,6 +50,7 @@ object PendingRegistrations {
             email = email,
             username = username,
             password = password,
+            language = language,
             code = code,
             createdAt = System.currentTimeMillis()
         )
@@ -98,7 +101,7 @@ object PendingRegistrations {
             attempts = 0
         )
 
-        return ResendResult.Success(pending.email, newCode)
+        return ResendResult.Success(pending.email, newCode, pending.language)
     }
 
     fun findByUsername(username: String): PendingRegistration? {

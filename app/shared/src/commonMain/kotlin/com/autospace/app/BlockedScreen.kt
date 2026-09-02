@@ -25,6 +25,7 @@ fun BlockedScreen(
     onSend: (message: String, phone: String, email: String) -> Unit,
     onBackToRegistration: () -> Unit
 ) {
+    val strings = LocalStrings.current
     val windowSizeClass = LocalWindowSizeClass.current
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
         Modifier.fillMaxWidth()
@@ -45,13 +46,13 @@ fun BlockedScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Доступ отклонён",
+                text = strings.blockedTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "К сожалению, ваша заявка была отклонена. Если считаете, что это ошибка, напишите нам.",
+                text = strings.blockedDescription,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp)
@@ -68,7 +69,7 @@ fun BlockedScreen(
                 onClick = onBackToRegistration,
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
             ) {
-                Text("Зарегистрироваться заново")
+                Text(strings.blockedRegisterAgain)
             }
         }
     }

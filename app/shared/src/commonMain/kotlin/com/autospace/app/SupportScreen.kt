@@ -27,6 +27,7 @@ fun SupportScreen(
     onBackToRegistration: () -> Unit,
     onKeepWaiting: () -> Unit
 ) {
+    val strings = LocalStrings.current
     val windowSizeClass = LocalWindowSizeClass.current
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
         Modifier.fillMaxWidth()
@@ -47,13 +48,13 @@ fun SupportScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Поддержка",
+                text = strings.supportScreenTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Если вы допустили ошибку при регистрации, вы можете начать заново. Либо продолжайте ожидать решение по вашей заявке.",
+                text = strings.supportScreenDescription,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp)
@@ -70,14 +71,14 @@ fun SupportScreen(
                 onClick = onKeepWaiting,
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
             ) {
-                Text("Продолжить ожидание")
+                Text(strings.supportKeepWaiting)
             }
 
             OutlinedButton(
                 onClick = onBackToRegistration,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
             ) {
-                Text("Начать регистрацию заново")
+                Text(strings.supportBackToRegistration)
             }
         }
     }

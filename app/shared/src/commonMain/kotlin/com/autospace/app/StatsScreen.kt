@@ -31,6 +31,7 @@ fun StatsScreen(
     isLoading: Boolean,
     results: List<TestResultItemDto>
 ) {
+    val strings = LocalStrings.current
     val windowSizeClass = LocalWindowSizeClass.current
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
         Modifier.fillMaxWidth()
@@ -41,7 +42,7 @@ fun StatsScreen(
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(modifier = contentModifier.padding(16.dp)) {
             Text(
-                text = "Статистика",
+                text = strings.statsTitle,
                 style = MaterialTheme.typography.headlineSmall
             )
 
@@ -58,7 +59,7 @@ fun StatsScreen(
 
             if (results.isEmpty()) {
                 Text(
-                    text = "Вы пока не проходили тесты",
+                    text = strings.statsEmpty,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 16.dp)
                 )
@@ -73,13 +74,14 @@ fun StatsScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("Пройдено", "$totalTests", Modifier.weight(1f))
-                StatCard("Успеваемость", "$averagePercent%", Modifier.weight(1f))
-                StatCard("Лучший", "$bestResult", Modifier.weight(1f))
+                StatCard(strings.statsCompleted, "$totalTests", Modifier.weight(1f))
+                StatCard(strings.statsAccuracy, "$averagePercent%", Modifier.weight(1f))
+                StatCard(strings.statsBest, "$bestResult", Modifier.weight(1f))
             }
 
             ProgressChart(
                 results = results,
+                dynamicsLabel = strings.statsDynamics,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             )
 
@@ -92,18 +94,18 @@ fun StatsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Тест ${result.testNumber}",
+                                    text = "${strings.commonTestWord} ${result.testNumber}",
                                     style = MaterialTheme.typography.titleSmall
                                 )
                                 Text(
-                                    text = if (result.mode == "EXAM") "Экзамен" else "Обучение",
+                                    text = if (result.mode == "EXAM") strings.commonExam else strings.commonLearning,
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
 
                             val percent = result.correctCount * 100 / result.totalQuestions
                             Text(
-                                text = "${result.correctCount} из ${result.totalQuestions} ($percent%)",
+                                text = strings.resultOutOf(result.correctCount, result.totalQuestions) + " ($percent%)",
                                 color = if (percent >= 90) Color(0xFF4CAF50) else Color(0xFFF44336),
                                 modifier = Modifier.padding(top = 4.dp)
                             )
@@ -129,7 +131,7 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun ProgressChart(results: List<TestResultItemDto>, modifier: Modifier = Modifier) {
+private fun ProgressChart(results: List<TestResultItemDto>, dynamicsLabel: String, modifier: Modifier = Modifier) {
     // Старые слева, новые справа — список приходит от новых к старым
     val points = results.reversed().map { it.correctCount * 100f / it.totalQuestions }
 
@@ -141,7 +143,7 @@ private fun ProgressChart(results: List<TestResultItemDto>, modifier: Modifier =
     Card(modifier = modifier) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "Динамика",
+                text = dynamicsLabel,
                 style = MaterialTheme.typography.titleSmall
             )
 

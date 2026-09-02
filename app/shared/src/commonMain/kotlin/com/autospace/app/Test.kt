@@ -6,12 +6,9 @@ enum class TestMode {
 }
 
 data class TestInfo(
-    val number: Int,
-    val title: String
+    val number: Int
 )
 
 fun generateTestList(): List<TestInfo> {
-    return (1..50).map { number ->
-        TestInfo(number = number, title = "Тест $number")
-    }
+    return (1..50).map { number -> TestInfo(number = number) }
 }

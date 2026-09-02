@@ -43,6 +43,8 @@ fun MainMenuScreen(
     onTestSelected: (TestInfo, TestMode) -> Unit,
     onOpenStats: () -> Unit
 ) {
+    val strings = LocalStrings.current
+
     var selectedMode by remember { mutableStateOf(TestMode.LEARNING) }
     val tests = remember { generateTestList() }
     val scope = rememberCoroutineScope()
@@ -51,7 +53,7 @@ fun MainMenuScreen(
     var showResetConfirmation by remember { mutableStateOf(false) }
     var isResetting by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
-    var alreadyCompletedInfo by remember { mutableStateOf<String?>(null) }
+    var alreadyCompletedTestNumber by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
@@ -82,11 +84,11 @@ fun MainMenuScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Auto Space",
+                    text = strings.mainMenuAppName,
                     style = MaterialTheme.typography.headlineMedium
                 )
                 TextButton(onClick = onOpenStats) {
-                    Text("Статистика")
+                    Text(strings.mainMenuStats)
                 }
             }
 
@@ -97,12 +99,12 @@ fun MainMenuScreen(
                 FilterChip(
                     selected = selectedMode == TestMode.LEARNING,
                     onClick = { selectedMode = TestMode.LEARNING },
-                    label = { Text("Обучение") }
+                    label = { Text(strings.commonLearning) }
                 )
                 FilterChip(
                     selected = selectedMode == TestMode.EXAM,
                     onClick = { selectedMode = TestMode.EXAM },
-                    label = { Text("Экзамен") }
+                    label = { Text(strings.commonExam) }
                 )
             }
 
@@ -134,7 +136,7 @@ fun MainMenuScreen(
                             CardDefaults.cardColors(),
                         onClick = {
                             if (isCompleted) {
-                                alreadyCompletedInfo = test.title
+                                alreadyCompletedTestNumber = test.number
                             } else {
                                 onTestSelected(test, selectedMode)
                             }
@@ -145,7 +147,7 @@ fun MainMenuScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text(test.title)
+                            Text("${strings.commonTestWord} ${test.number}")
                         }
                     }
                 }
@@ -155,7 +157,7 @@ fun MainMenuScreen(
                 onClick = { showResetConfirmation = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Обновить всё")
+                Text(strings.mainMenuResetAll)
             }
         }
     }
@@ -163,8 +165,8 @@ fun MainMenuScreen(
     if (showResetConfirmation) {
         AlertDialog(
             onDismissRequest = { if (!isResetting) showResetConfirmation = false },
-            title = { Text("Обновить всё?") },
-            text = { Text("Это удалит всю статистику и прогресс по всем тестам. Все тесты снова станут доступны для прохождения.") },
+            title = { Text(strings.mainMenuResetConfirmTitle) },
+            text = { Text(strings.mainMenuResetConfirmText) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -181,7 +183,7 @@ fun MainMenuScreen(
                         }
                     }
                 ) {
-                    Text(if (isResetting) "Обновление..." else "Обновить")
+                    Text(if (isResetting) strings.mainMenuResetting else strings.mainMenuResetConfirmButton)
                 }
             },
             dismissButton = {
@@ -189,20 +191,20 @@ fun MainMenuScreen(
                     onClick = { showResetConfirmation = false },
                     enabled = !isResetting
                 ) {
-                    Text("Отмена")
+                    Text(strings.mainMenuCancel)
                 }
             }
         )
     }
 
-    if (alreadyCompletedInfo != null) {
+    if (alreadyCompletedTestNumber != null) {
         AlertDialog(
-            onDismissRequest = { alreadyCompletedInfo = null },
-            title = { Text("Тест уже пройден") },
-            text = { Text("Вы уже прошли «$alreadyCompletedInfo». Чтобы пройти заново, нажмите «Обновить всё» внизу.") },
+            onDismissRequest = { alreadyCompletedTestNumber = null },
+            title = { Text(strings.mainMenuAlreadyCompletedTitle) },
+            text = { Text(strings.mainMenuAlreadyCompletedText("${strings.commonTestWord} $alreadyCompletedTestNumber")) },
             confirmButton = {
-                Button(onClick = { alreadyCompletedInfo = null }) {
-                    Text("Понятно")
+                Button(onClick = { alreadyCompletedTestNumber = null }) {
+                    Text(strings.mainMenuOk)
                 }
             }
         )

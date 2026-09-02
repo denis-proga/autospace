@@ -107,10 +107,11 @@ fun Application.module() {
                 lastName = request.lastName,
                 email = request.email,
                 username = request.username,
-                password = request.password
+                password = request.password,
+                language = request.language
             )
 
-            val emailSent = EmailService.sendVerificationCode(request.email, code)
+            val emailSent = EmailService.sendVerificationCode(request.email, code, request.language)
 
             if (!emailSent) {
                 call.respond(AuthResponse(success = false, message = "Не удалось отправить письмо с кодом. Попробуйте позже"))
@@ -167,7 +168,7 @@ fun Application.module() {
                     call.respond(AuthResponse(success = false, message = "Превышен лимит повторных отправок. Обратитесь в поддержку"))
                 }
                 is ResendResult.Success -> {
-                    val emailSent = EmailService.sendVerificationCode(result.email, result.code)
+                    val emailSent = EmailService.sendVerificationCode(result.email, result.code, result.language)
 
                     if (!emailSent) {
                         call.respond(AuthResponse(success = false, message = "Не удалось отправить письмо с кодом. Попробуйте позже"))

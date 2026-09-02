@@ -3,7 +3,6 @@ package com.autospace.app
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,6 +22,8 @@ fun SupportForm(
     errorMessage: String?,
     onSend: (message: String, phone: String, email: String) -> Unit
 ) {
+    val strings = LocalStrings.current
+
     var message by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -32,26 +33,26 @@ fun SupportForm(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Написать в поддержку",
+            text = strings.commonSupport,
             style = MaterialTheme.typography.titleMedium
         )
 
         OutlinedTextField(
             value = message,
             onValueChange = { message = it },
-            label = { Text("Сообщение") },
+            label = { Text(strings.supportFormMessage) },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = phone,
             onValueChange = { phone = it },
-            label = { Text("Телефон (необязательно)") },
+            label = { Text(strings.supportFormPhone) },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email (необязательно)") },
+            label = { Text(strings.supportFormEmail) },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -62,12 +63,12 @@ fun SupportForm(
             )
         } else if (sentSuccessfully) {
             Text(
-                text = "Сообщение отправлено!",
+                text = strings.supportFormSentSuccess,
                 color = Color(0xFF4CAF50)
             )
         } else {
             LoadingButton(
-                text = "Отправить",
+                text = strings.supportFormSend,
                 isLoading = isSending,
                 enabled = message.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),

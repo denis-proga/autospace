@@ -69,6 +69,8 @@ fun TestScreen(
     onFinish: () -> Unit,
     onSaveResult: (correctCount: Int, total: Int) -> Unit
 ) {
+    val strings = LocalStrings.current
+
     val windowSizeClass = LocalWindowSizeClass.current
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
         Modifier.fillMaxWidth()
@@ -88,7 +90,7 @@ fun TestScreen(
             val response = ApiClient.getQuestions(test.number)
             questions = response.questions.map { it.toQuestion() }
         } catch (e: Exception) {
-            loadErrorMessage = friendlyServerErrorMessage(e)
+            loadErrorMessage = friendlyServerErrorMessage(e, strings)
         }
     }
 
@@ -118,13 +120,13 @@ fun TestScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Button(onClick = { reloadTrigger++ }) {
-                        Text("Повторить")
+                        Text(strings.testRetry)
                     }
                 } else {
                     CircularProgressIndicator()
                     if (showWakingHint) {
                         Text(
-                            text = "Подключение к серверу… Обычно это занимает до минуты",
+                            text = strings.commonWakingHint,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -225,7 +227,7 @@ fun TestScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("${test.title} — Вопрос ${currentIndex + 1}/${loadedQuestions.size}")
+                Text("${strings.commonTestWord} ${test.number} — ${strings.commonQuestionWord} ${currentIndex + 1}/${loadedQuestions.size}")
                 if (mode == TestMode.EXAM) {
                     val minutes = secondsLeft / 60
                     val seconds = secondsLeft % 60
@@ -283,7 +285,7 @@ fun TestScreen(
                     onClick = { showExplanation = true },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
                 ) {
-                    Text("Объяснение")
+                    Text(strings.testExplanation)
                 }
             }
 
@@ -295,14 +297,14 @@ fun TestScreen(
                     onClick = { currentIndex--; showExplanation = false },
                     enabled = currentIndex > 0
                 ) {
-                    Text("← Пред.")
+                    Text(strings.testPrev)
                 }
 
                 OutlinedButton(
                     onClick = { currentIndex++; showExplanation = false },
                     enabled = currentIndex < loadedQuestions.lastIndex
                 ) {
-                    Text("След. →")
+                    Text(strings.testNext)
                 }
             }
 
@@ -310,7 +312,7 @@ fun TestScreen(
                 onClick = { showFinishConfirmation = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
             ) {
-                Text("Завершить тест")
+                Text(strings.testFinish)
             }
         }
     }
@@ -320,10 +322,10 @@ fun TestScreen(
             onDismissRequest = { showExplanation = false },
             confirmButton = {
                 Button(onClick = { showExplanation = false }) {
-                    Text("Закрыть")
+                    Text(strings.testClose)
                 }
             },
-            title = { Text("Объяснение") },
+            title = { Text(strings.testExplanation) },
             text = { Text(question.explanation) }
         )
     }
@@ -337,14 +339,14 @@ fun TestScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Завершить тест?",
+                        text = strings.testFinishDialogTitle,
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
                         text = if (unansweredCount > 0)
-                            "Без ответа: $unansweredCount из ${loadedQuestions.size}. Нажмите на номер, чтобы перейти к вопросу."
+                            strings.testFinishUnansweredText(unansweredCount, loadedQuestions.size)
                         else
-                            "Все вопросы отвечены. Нажмите на номер, чтобы вернуться к вопросу.",
+                            strings.testFinishAllAnsweredText,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
                     )
@@ -395,7 +397,7 @@ fun TestScreen(
                             onClick = { showFinishConfirmation = false },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Продолжить")
+                            Text(strings.testContinue)
                         }
                         Button(
                             onClick = {
@@ -405,7 +407,7 @@ fun TestScreen(
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Завершить")
+                            Text(strings.testFinishConfirm)
                         }
                     }
                 }
@@ -416,19 +418,21 @@ fun TestScreen(
 
 @Composable
 fun ResultScreen(correctCount: Int, total: Int, onFinish: () -> Unit) {
+    val strings = LocalStrings.current
+
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         val message = when {
-            correctCount == total -> "Come on, go to pass the theory!"
-            correctCount in 27..29 -> "Сомнительно, ну окей!"
-            else -> "Ещё нужно подучить!"
+            correctCount == total -> strings.resultPerfect
+            correctCount in 27..29 -> strings.resultGood
+            else -> strings.resultBad
         }
 
         Text(
-            text = "$correctCount из $total",
+            text = strings.resultOutOf(correctCount, total),
             style = MaterialTheme.typography.displaySmall
         )
         Text(
@@ -440,7 +444,7 @@ fun ResultScreen(correctCount: Int, total: Int, onFinish: () -> Unit) {
             onClick = onFinish,
             modifier = Modifier.padding(top = 32.dp)
         ) {
-            Text("В меню")
+            Text(strings.resultBackToMenu)
         }
     }
 }

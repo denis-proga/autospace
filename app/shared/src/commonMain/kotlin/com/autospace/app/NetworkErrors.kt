@@ -5,11 +5,10 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 
 class QuestionsNotFoundException(val testNumber: Int) : Exception("No questions for test $testNumber")
 
-fun friendlyServerErrorMessage(e: Exception): String {
+fun friendlyServerErrorMessage(e: Exception, strings: AppStrings): String {
     return when (e) {
-        is QuestionsNotFoundException -> "Вопросы для этого теста ещё не добавлены"
-        is HttpRequestTimeoutException, is ConnectTimeoutException ->
-            "Не удалось подключиться к серверу. Сервер мог «заснуть» — попробуйте ещё раз через минуту."
-        else -> "Server unreachable: ${e.message}"
+        is QuestionsNotFoundException -> strings.errorQuestionsNotFound
+        is HttpRequestTimeoutException, is ConnectTimeoutException -> strings.errorServerSleeping
+        else -> "${strings.errorServerUnreachablePrefix}: ${e.message}"
     }
 }

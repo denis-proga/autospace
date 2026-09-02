@@ -38,6 +38,8 @@ fun AuthScreen(
     onLogin: (username: String, password: String) -> Unit,
     onRegister: (User) -> Unit
 ) {
+    val strings = LocalStrings.current
+
     var isLoginMode by remember { mutableStateOf(true) }
 
     var showWakingHint by remember { mutableStateOf(false) }
@@ -98,7 +100,7 @@ fun AuthScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = if (isLoginMode) "Вход" else "Регистрация",
+            text = if (isLoginMode) strings.authLoginTitle else strings.authRegisterTitle,
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -110,7 +112,7 @@ fun AuthScreen(
                 OutlinedTextField(
                     value = firstName,
                     onValueChange = { firstName = it },
-                    label = { Text("Имя") },
+                    label = { Text(strings.authFirstName) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
@@ -118,7 +120,7 @@ fun AuthScreen(
                 OutlinedTextField(
                     value = lastName,
                     onValueChange = { lastName = it },
-                    label = { Text("Фамилия") },
+                    label = { Text(strings.authLastName) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
@@ -126,7 +128,7 @@ fun AuthScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Почта") },
+                    label = { Text(strings.authEmail) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
@@ -136,7 +138,7 @@ fun AuthScreen(
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Логин") },
+                label = { Text(strings.authUsername) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth()
@@ -144,11 +146,11 @@ fun AuthScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Пароль") },
+                label = { Text(strings.authPassword) },
                 visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     TextButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                        Text(if (isPasswordVisible) "Скрыть" else "Показать")
+                        Text(if (isPasswordVisible) strings.authHidePassword else strings.authShowPassword)
                     }
                 },
                 singleLine = true,
@@ -166,7 +168,7 @@ fun AuthScreen(
             }
 
             LoadingButton(
-                text = if (isLoginMode) "Войти" else "Зарегистрироваться",
+                text = if (isLoginMode) strings.authLoginButton else strings.authRegisterButton,
                 isLoading = isLoading,
                 enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth(),
@@ -175,7 +177,7 @@ fun AuthScreen(
 
             if (showWakingHint) {
                 Text(
-                    text = "Подключение к серверу… Обычно это занимает до минуты",
+                    text = strings.commonWakingHint,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -192,8 +194,8 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    if (isLoginMode) "Нет аккаунта? Зарегистрироваться"
-                    else "Уже есть аккаунт? Войти"
+                    if (isLoginMode) strings.authSwitchToRegister
+                    else strings.authSwitchToLogin
                 )
             }
         }

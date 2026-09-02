@@ -21,6 +21,7 @@ fun PendingScreen(
     onCheckStatus: () -> Unit,
     onGoToSupport: () -> Unit
 ) {
+    val strings = LocalStrings.current
     val windowSizeClass = LocalWindowSizeClass.current
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
         Modifier.fillMaxWidth()
@@ -38,20 +39,20 @@ fun PendingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Ваша заявка обрабатывается",
+                text = strings.pendingTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "В течение 12 часов вы получите ответ",
+                text = strings.pendingDescription,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
             )
 
             LoadingButton(
-                text = "Проверить статус",
+                text = strings.pendingCheckStatus,
                 isLoading = isChecking,
                 modifier = Modifier.padding(top = 24.dp),
                 onClick = onCheckStatus
@@ -61,7 +62,7 @@ fun PendingScreen(
                 onClick = onGoToSupport,
                 modifier = Modifier.padding(top = 12.dp)
             ) {
-                Text("Нужна помощь?")
+                Text(strings.pendingNeedHelp)
             }
         }
     }
