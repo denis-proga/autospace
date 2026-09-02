@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import io.ktor.http.HttpStatusCode
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 
 fun main() {
     initDatabase()
