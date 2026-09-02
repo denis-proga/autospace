@@ -217,16 +217,14 @@ fun Application.module() {
         post("/save-progress") {
             val request = call.receive<SaveProgressRequest>()
 
-            val user = transaction {
-                Users.select(Users.id).where { Users.username eq request.username }.singleOrNull()
+            val userId = transaction {
+                Users.select(Users.id).where { Users.username eq request.username }.singleOrNull()?.get(Users.id)
             }
 
-            if (user == null) {
+            if (userId == null) {
                 call.respond(AuthResponse(success = false, message = "User not found"))
                 return@post
             }
-
-            val userId = user[Users.id]
 
             transaction {
                 val existing = TestProgress.select(TestProgress.id)
@@ -269,16 +267,14 @@ fun Application.module() {
                 return@get
             }
 
-            val user = transaction {
-                Users.select(Users.id).where { Users.username eq username }.singleOrNull()
+            val userId = transaction {
+                Users.select(Users.id).where { Users.username eq username }.singleOrNull()?.get(Users.id)
             }
 
-            if (user == null) {
+            if (userId == null) {
                 call.respond(ProgressResponse(found = false))
                 return@get
             }
-
-            val userId = user[Users.id]
 
             val progress = transaction {
                 TestProgress.select(TestProgress.answersData, TestProgress.currentIndex, TestProgress.secondsLeft)
