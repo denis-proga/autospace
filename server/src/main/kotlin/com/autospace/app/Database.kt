@@ -36,14 +36,15 @@ object TestResults : Table("test_results") {
 
 object Questions : Table("questions") {
     val id = integer("id").autoIncrement()
+    val questionKey = varchar("question_key", 255).uniqueIndex()
     val testNumber = integer("test_number")
-    val imageFilename = varchar("image_filename", 255).uniqueIndex()
+    val imageFilename = varchar("image_filename", 255)
     val questionText = text("question_text")
     val optionA = text("option_a")
     val optionB = text("option_b")
     val optionC = text("option_c").nullable()
     val optionD = text("option_d").nullable()
-    val correctOption = varchar("correct_option", 1) // A, B, C или D
+    val correctOption = varchar("correct_option", 1)
     val explanation = text("explanation")
 
     override val primaryKey = PrimaryKey(id)
@@ -73,6 +74,7 @@ fun initDatabase() {
     }
 
     transaction {
+        exec("DROP TABLE IF EXISTS questions")
         SchemaUtils.create(Users, TestResults, Questions)
     }
 }
