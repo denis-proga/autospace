@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -34,71 +37,87 @@ fun VerifyCodeScreen(
 ) {
     var code by remember { mutableStateOf("") }
 
+    val windowSizeClass = LocalWindowSizeClass.current
+    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier.fillMaxWidth().widthIn(max = 400.dp)
+    }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Подтверждение почты",
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "Мы отправили код подтверждения на $email",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp)
-        )
-
-        OutlinedTextField(
-            value = code,
-            onValueChange = { code = it },
-            label = { Text("Код из письма") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (errorMessage != null) {
+        Column(
+            modifier = contentModifier,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                text = errorMessage,
-                color = Color(0xFFF44336),
-                modifier = Modifier.padding(top = 8.dp)
+                text = "Подтверждение почты",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
-        }
+            Text(
+                text = "Мы отправили код подтверждения на $email",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp)
+            )
 
-        LoadingButton(
-            text = "Подтвердить",
-            isLoading = isVerifying,
-            enabled = code.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            onClick = { onVerify(code) }
-        )
+            OutlinedTextField(
+                value = code,
+                onValueChange = { code = it },
+                label = { Text("Код из письма") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        when {
-            resendExhausted -> {
+            if (errorMessage != null) {
                 Text(
-                    text = "Код не приходит? Похоже, что-то пошло не так с доставкой письма",
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 16.dp)
+                    text = errorMessage,
+                    color = Color(0xFFF44336),
+                    modifier = Modifier.padding(top = 8.dp)
                 )
-                TextButton(onClick = onContactSupport) {
-                    Text("Написать в поддержку")
+            }
+
+            LoadingButton(
+                text = "Подтвердить",
+                isLoading = isVerifying,
+                enabled = code.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                onClick = { onVerify(code) }
+            )
+
+            when {
+                resendExhausted -> {
+                    Text(
+                        text = "Код не приходит? Похоже, что-то пошло не так с доставкой письма",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    )
+                    TextButton(onClick = onContactSupport) {
+                        Text("Написать в поддержку")
+                    }
                 }
-            }
-            resendCooldownSeconds > 0 -> {
-                Text(
-                    text = "Отправить код повторно можно через $resendCooldownSeconds сек.",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
-            else -> {
-                TextButton(
-                    onClick = onResendCode,
-                    enabled = !isResending
-                ) {
-                    Text(if (isResending) "Отправка..." else "Не пришёл код? Отправить снова")
+                resendCooldownSeconds > 0 -> {
+                    Text(
+                        text = "Отправить код повторно можно через $resendCooldownSeconds сек.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    )
+                }
+                else -> {
+                    TextButton(
+                        onClick = onResendCode,
+                        enabled = !isResending
+                    ) {
+                        Text(if (isResending) "Отправка..." else "Не пришёл код? Отправить снова")
+                    }
                 }
             }
         }

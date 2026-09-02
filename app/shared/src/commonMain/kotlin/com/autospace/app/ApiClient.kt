@@ -11,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 import io.ktor.client.request.get
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.http.HttpStatusCode
 
 @Serializable
 data class RegisterRequestDto(
@@ -200,7 +201,11 @@ object ApiClient {
     }
 
     suspend fun getQuestions(testNumber: Int): QuestionsListResponseDto {
-        return client.get("$BASE_URL/questions/$testNumber").body()
+        val response = client.get("$BASE_URL/questions/$testNumber")
+        if (response.status == HttpStatusCode.NotFound) {
+            throw QuestionsNotFoundException(testNumber)
+        }
+        return response.body()
     }
 
     suspend fun fetchImageBytes(url: String): ByteArray {

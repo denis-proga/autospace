@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -26,6 +27,13 @@ fun SupportScreen(
     onBackToRegistration: () -> Unit,
     onKeepWaiting: () -> Unit
 ) {
+    val windowSizeClass = LocalWindowSizeClass.current
+    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier.fillMaxWidth().widthIn(max = 500.dp)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -34,37 +42,43 @@ fun SupportScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Поддержка",
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "Если вы допустили ошибку при регистрации, вы можете начать заново. Либо продолжайте ожидать решение по вашей заявке.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp)
-        )
-
-        SupportForm(
-            isSending = isSending,
-            sentSuccessfully = sentSuccessfully,
-            errorMessage = errorMessage,
-            onSend = onSend
-        )
-
-        Button(
-            onClick = onKeepWaiting,
-            modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
+        Column(
+            modifier = contentModifier,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Продолжить ожидание")
-        }
+            Text(
+                text = "Поддержка",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Если вы допустили ошибку при регистрации, вы можете начать заново. Либо продолжайте ожидать решение по вашей заявке.",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp)
+            )
 
-        OutlinedButton(
-            onClick = onBackToRegistration,
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-        ) {
-            Text("Начать регистрацию заново")
+            SupportForm(
+                isSending = isSending,
+                sentSuccessfully = sentSuccessfully,
+                errorMessage = errorMessage,
+                onSend = onSend
+            )
+
+            Button(
+                onClick = onKeepWaiting,
+                modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
+            ) {
+                Text("Продолжить ожидание")
+            }
+
+            OutlinedButton(
+                onClick = onBackToRegistration,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+            ) {
+                Text("Начать регистрацию заново")
+            }
         }
     }
 }

@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -67,6 +69,13 @@ fun TestScreen(
     onFinish: () -> Unit,
     onSaveResult: (correctCount: Int, total: Int) -> Unit
 ) {
+    val windowSizeClass = LocalWindowSizeClass.current
+    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier.fillMaxWidth().widthIn(max = 600.dp)
+    }
+
     var questions by remember { mutableStateOf<List<Question>?>(null) }
     var loadErrorMessage by remember { mutableStateOf<String?>(null) }
     var showWakingHint by remember { mutableStateOf(false) }
@@ -94,32 +103,34 @@ fun TestScreen(
     val loadedQuestions = questions
 
     if (loadedQuestions == null) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            val errorMessage = loadErrorMessage
-            if (errorMessage != null) {
-                Text(
-                    text = errorMessage,
-                    color = Color(0xFFF44336),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Button(onClick = { reloadTrigger++ }) {
-                    Text("Повторить")
-                }
-            } else {
-                CircularProgressIndicator()
-                if (showWakingHint) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                modifier = contentModifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                val errorMessage = loadErrorMessage
+                if (errorMessage != null) {
                     Text(
-                        text = "Подключение к серверу… Обычно это занимает до минуты",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = errorMessage,
+                        color = Color(0xFFF44336),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
+                    Button(onClick = { reloadTrigger++ }) {
+                        Text("Повторить")
+                    }
+                } else {
+                    CircularProgressIndicator()
+                    if (showWakingHint) {
+                        Text(
+                            text = "Подключение к серверу… Обычно это занимает до минуты",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -204,97 +215,103 @@ fun TestScreen(
     val selectedOptionId = answers[currentIndex]
     val isAnswerLocked = mode == TestMode.LEARNING && selectedOptionId != null
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            modifier = contentModifier
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            Text("${test.title} — Вопрос ${currentIndex + 1}/${loadedQuestions.size}")
-            if (mode == TestMode.EXAM) {
-                val minutes = secondsLeft / 60
-                val seconds = secondsLeft % 60
-                Text("⏱ ${minutes}:${seconds.toString().padStart(2, '0')}")
-            }
-        }
-
-        NetworkImage(
-            url = question.imageUrl,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 220.dp)
-                .padding(top = 12.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-        )
-
-        Text(
-            text = question.text,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            question.options.forEach { option ->
-                val backgroundColor = when {
-                    selectedOptionId == null -> MaterialTheme.colorScheme.surfaceVariant
-                    mode == TestMode.EXAM -> {
-                        if (option.id == selectedOptionId) Color(0xFF7E57C2)
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    }
-                    option.id == question.correctOptionId -> Color(0xFF4CAF50)
-                    option.id == selectedOptionId -> Color(0xFFF44336)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("${test.title} — Вопрос ${currentIndex + 1}/${loadedQuestions.size}")
+                if (mode == TestMode.EXAM) {
+                    val minutes = secondsLeft / 60
+                    val seconds = secondsLeft % 60
+                    Text("⏱ ${minutes}:${seconds.toString().padStart(2, '0')}")
                 }
+            }
 
-                Button(
-                    onClick = {
-                        if (!isAnswerLocked) {
-                            answers[currentIndex] = option.id
+            NetworkImage(
+                url = question.imageUrl,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .padding(top = 12.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+            )
+
+            Text(
+                text = question.text,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                question.options.forEach { option ->
+                    val backgroundColor = when {
+                        selectedOptionId == null -> MaterialTheme.colorScheme.surfaceVariant
+                        mode == TestMode.EXAM -> {
+                            if (option.id == selectedOptionId) Color(0xFF7E57C2)
+                            else MaterialTheme.colorScheme.surfaceVariant
                         }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(option.text)
+                        option.id == question.correctOptionId -> Color(0xFF4CAF50)
+                        option.id == selectedOptionId -> Color(0xFFF44336)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+
+                    Button(
+                        onClick = {
+                            if (!isAnswerLocked) {
+                                answers[currentIndex] = option.id
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(option.text)
+                    }
                 }
             }
-        }
 
-        if (selectedOptionId != null && mode == TestMode.LEARNING) {
-            OutlinedButton(
-                onClick = { showExplanation = true },
+            if (selectedOptionId != null && mode == TestMode.LEARNING) {
+                OutlinedButton(
+                    onClick = { showExplanation = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                ) {
+                    Text("Объяснение")
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedButton(
+                    onClick = { currentIndex--; showExplanation = false },
+                    enabled = currentIndex > 0
+                ) {
+                    Text("← Пред.")
+                }
+
+                OutlinedButton(
+                    onClick = { currentIndex++; showExplanation = false },
+                    enabled = currentIndex < loadedQuestions.lastIndex
+                ) {
+                    Text("След. →")
+                }
+            }
+
+            Button(
+                onClick = { showFinishConfirmation = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
             ) {
-                Text("Объяснение")
+                Text("Завершить тест")
             }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            OutlinedButton(
-                onClick = { currentIndex--; showExplanation = false },
-                enabled = currentIndex > 0
-            ) {
-                Text("← Пред.")
-            }
-
-            OutlinedButton(
-                onClick = { currentIndex++; showExplanation = false },
-                enabled = currentIndex < loadedQuestions.lastIndex
-            ) {
-                Text("След. →")
-            }
-        }
-
-        Button(
-            onClick = { showFinishConfirmation = true },
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-        ) {
-            Text("Завершить тест")
         }
     }
 
@@ -336,7 +353,7 @@ fun TestScreen(
                         columns = GridCells.Fixed(6),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.height(220.dp)
+                        modifier = Modifier.height(260.dp)
                     ) {
                         items(loadedQuestions.size) { idx ->
                             val answeredOptionId = answers[idx]
@@ -350,7 +367,7 @@ fun TestScreen(
 
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(44.dp)
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(squareColor)
                                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
@@ -399,17 +416,17 @@ fun TestScreen(
 
 @Composable
 fun ResultScreen(correctCount: Int, total: Int, onFinish: () -> Unit) {
-    val message = when {
-        correctCount == total -> "Come on, go to pass the theory!"
-        correctCount in 27..29 -> "Сомнительно, ну окей!"
-        else -> "Ещё нужно подучить!"
-    }
-
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        val message = when {
+            correctCount == total -> "Come on, go to pass the theory!"
+            correctCount in 27..29 -> "Сомнительно, ну окей!"
+            else -> "Ещё нужно подучить!"
+        }
+
         Text(
             text = "$correctCount из $total",
             style = MaterialTheme.typography.displaySmall

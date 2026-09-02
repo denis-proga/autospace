@@ -1,11 +1,13 @@
 package com.autospace.app
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -29,74 +31,83 @@ fun StatsScreen(
     isLoading: Boolean,
     results: List<TestResultItemDto>
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = "Статистика",
-            style = MaterialTheme.typography.headlineSmall
-        )
+    val windowSizeClass = LocalWindowSizeClass.current
+    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier.fillMaxWidth().widthIn(max = 700.dp)
+    }
 
-        if (isLoading) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-            }
-            return@Column
-        }
-
-        if (results.isEmpty()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(modifier = contentModifier.padding(16.dp)) {
             Text(
-                text = "Вы пока не проходили тесты",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 16.dp)
+                text = "Статистика",
+                style = MaterialTheme.typography.headlineSmall
             )
-            return@Column
-        }
 
-        val totalTests = results.size
-        val averagePercent = results.sumOf { it.correctCount * 100 / it.totalQuestions } / totalTests
-        val bestResult = results.maxOf { it.correctCount }
+            if (isLoading) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Column
+            }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            StatCard("Пройдено", "$totalTests", Modifier.weight(1f))
-            StatCard("Успеваемость", "$averagePercent%", Modifier.weight(1f))
-            StatCard("Лучший", "$bestResult", Modifier.weight(1f))
-        }
+            if (results.isEmpty()) {
+                Text(
+                    text = "Вы пока не проходили тесты",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+                return@Column
+            }
 
-        ProgressChart(
-            results = results,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-        )
+            val totalTests = results.size
+            val averagePercent = results.sumOf { it.correctCount * 100 / it.totalQuestions } / totalTests
+            val bestResult = results.maxOf { it.correctCount }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(results) { result ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StatCard("Пройдено", "$totalTests", Modifier.weight(1f))
+                StatCard("Успеваемость", "$averagePercent%", Modifier.weight(1f))
+                StatCard("Лучший", "$bestResult", Modifier.weight(1f))
+            }
+
+            ProgressChart(
+                results = results,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            )
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(results) { result ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Тест ${result.testNumber}",
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    text = if (result.mode == "EXAM") "Экзамен" else "Обучение",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            val percent = result.correctCount * 100 / result.totalQuestions
                             Text(
-                                text = "Тест ${result.testNumber}",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = if (result.mode == "EXAM") "Экзамен" else "Обучение",
-                                style = MaterialTheme.typography.bodySmall
+                                text = "${result.correctCount} из ${result.totalQuestions} ($percent%)",
+                                color = if (percent >= 90) Color(0xFF4CAF50) else Color(0xFFF44336),
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-
-                        val percent = result.correctCount * 100 / result.totalQuestions
-                        Text(
-                            text = "${result.correctCount} из ${result.totalQuestions} ($percent%)",
-                            color = if (percent >= 90) Color(0xFF4CAF50) else Color(0xFFF44336),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
                     }
                 }
             }

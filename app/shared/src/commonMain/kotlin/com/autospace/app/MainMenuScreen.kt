@@ -1,13 +1,16 @@
 package com.autospace.app
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -36,6 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainMenuScreen(
     username: String,
+    refreshKey: Int,
     onTestSelected: (TestInfo, TestMode) -> Unit,
     onOpenStats: () -> Unit
 ) {
@@ -47,8 +51,9 @@ fun MainMenuScreen(
     var showResetConfirmation by remember { mutableStateOf(false) }
     var isResetting by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
+    var alreadyCompletedInfo by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(username, refreshTrigger) {
+    LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
             val response = ApiClient.getResults(username)
             results = response.results
@@ -62,82 +67,96 @@ fun MainMenuScreen(
             .mapValues { (_, list) -> list.maxByOrNull { it.completedAt } }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Auto Space",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            TextButton(onClick = onOpenStats) {
-                Text("Статистика")
-            }
-        }
+    val windowSizeClass = LocalWindowSizeClass.current
+    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier.fillMaxWidth().widthIn(max = 900.dp)
+    }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterChip(
-                selected = selectedMode == TestMode.LEARNING,
-                onClick = { selectedMode = TestMode.LEARNING },
-                label = { Text("Обучение") }
-            )
-            FilterChip(
-                selected = selectedMode == TestMode.EXAM,
-                onClick = { selectedMode = TestMode.EXAM },
-                label = { Text("Экзамен") }
-            )
-        }
-
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 120.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 16.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            items(tests) { test ->
-                val latestResult = latestByTestMode[test.number to selectedMode.name]
-                val isCompleted = latestResult != null
-
-                val cardColor = when {
-                    latestResult == null -> null
-                    selectedMode == TestMode.EXAM -> Color(0xFF2196F3)
-                    latestResult.correctCount >= 27 -> Color(0xFF4CAF50)
-                    else -> Color(0xFFF44336)
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(modifier = contentModifier.fillMaxHeight().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Auto Space",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                TextButton(onClick = onOpenStats) {
+                    Text("Статистика")
                 }
+            }
 
-                Card(
-                    modifier = Modifier
-                        .height(80.dp)
-                        .fillMaxWidth(),
-                    colors = if (cardColor != null)
-                        CardDefaults.cardColors(containerColor = cardColor)
-                    else
-                        CardDefaults.cardColors(),
-                    enabled = !isCompleted,
-                    onClick = { onTestSelected(test, selectedMode) }
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = selectedMode == TestMode.LEARNING,
+                    onClick = { selectedMode = TestMode.LEARNING },
+                    label = { Text("Обучение") }
+                )
+                FilterChip(
+                    selected = selectedMode == TestMode.EXAM,
+                    onClick = { selectedMode = TestMode.EXAM },
+                    label = { Text("Экзамен") }
+                )
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 120.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 16.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(tests) { test ->
+                    val latestResult = latestByTestMode[test.number to selectedMode.name]
+                    val isCompleted = latestResult != null
+
+                    val cardColor = when {
+                        latestResult == null -> null
+                        selectedMode == TestMode.EXAM -> Color(0xFF2196F3)
+                        latestResult.correctCount >= 27 -> Color(0xFF4CAF50)
+                        else -> Color(0xFFF44336)
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .height(80.dp)
+                            .fillMaxWidth(),
+                        colors = if (cardColor != null)
+                            CardDefaults.cardColors(containerColor = cardColor)
+                        else
+                            CardDefaults.cardColors(),
+                        onClick = {
+                            if (isCompleted) {
+                                alreadyCompletedInfo = test.title
+                            } else {
+                                onTestSelected(test, selectedMode)
+                            }
+                        }
                     ) {
-                        Text(test.title)
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(test.title)
+                        }
                     }
                 }
             }
-        }
 
-        OutlinedButton(
-            onClick = { showResetConfirmation = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Обновить всё")
+            OutlinedButton(
+                onClick = { showResetConfirmation = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Обновить всё")
+            }
         }
     }
 
@@ -171,6 +190,19 @@ fun MainMenuScreen(
                     enabled = !isResetting
                 ) {
                     Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (alreadyCompletedInfo != null) {
+        AlertDialog(
+            onDismissRequest = { alreadyCompletedInfo = null },
+            title = { Text("Тест уже пройден") },
+            text = { Text("Вы уже прошли «$alreadyCompletedInfo». Чтобы пройти заново, нажмите «Обновить всё» внизу.") },
+            confirmButton = {
+                Button(onClick = { alreadyCompletedInfo = null }) {
+                    Text("Понятно")
                 }
             }
         )

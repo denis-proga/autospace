@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,6 +16,13 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LanguageSelectionScreen(onLanguageSelected: (Language) -> Unit) {
+    val windowSizeClass = LocalWindowSizeClass.current
+    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier.fillMaxWidth().widthIn(max = 400.dp)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -28,9 +36,7 @@ fun LanguageSelectionScreen(onLanguageSelected: (Language) -> Unit) {
         )
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 32.dp),
+            modifier = contentModifier.padding(top = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Language.entries.forEach { language ->

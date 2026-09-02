@@ -2,12 +2,14 @@ package com.autospace.app
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +50,7 @@ fun App() {
         var isResendingCode by remember { mutableStateOf(false) }
         var resendExhausted by remember { mutableStateOf(false) }
         var resendCount by remember { mutableStateOf(0) }
+        var menuRefreshTrigger by remember { mutableStateOf(0) }
 
         val scope = rememberCoroutineScope()
 
@@ -101,304 +104,313 @@ fun App() {
             resendExhausted = false
             resendCount = 0
             isAuthenticating = false
+            menuRefreshTrigger = 0
         }
 
         val showBackButton = stack.size > 1 && currentScreen != Screen.Pending
 
-        Column {
-            if (showBackButton) {
-                TextButton(onClick = { navigateBack() }, modifier = Modifier.padding(8.dp)) {
-                    Text("← Назад")
-                }
-            }
+        BoxWithConstraints {
+            val windowSizeClass = windowSizeClassFor(maxWidth)
 
-            Box(modifier = Modifier.padding(0.dp)) {
-                when (val screen = currentScreen) {
-                    is Screen.LanguageSelection -> {
-                        LanguageSelectionScreen(
-                            onLanguageSelected = { language ->
-                                selectedLanguage = language
-                                navigateTo(Screen.Auth)
-                            }
-                        )
+            CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
+                Column {
+                    if (showBackButton) {
+                        TextButton(onClick = { navigateBack() }, modifier = Modifier.padding(8.dp)) {
+                            Text("← Назад")
+                        }
                     }
 
-                    is Screen.Auth -> {
-                        AuthScreen(
-                            errorMessage = errorMessage,
-                            isLoading = isAuthenticating,
-                            onModeChanged = { errorMessage = null },
-                            onLogin = { username, password ->
-                                scope.launch {
-                                    isAuthenticating = true
-                                    errorMessage = null
-                                    try {
-                                        val response = ApiClient.login(LoginRequestDto(username, password))
-                                        if (response.success) {
-                                            loggedInUsername = username
-                                            loggedInPassword = password
-                                            licenseStatus = response.licenseStatus
-                                            navigateTo(
-                                                when (response.licenseStatus) {
-                                                    "ACTIVE" -> Screen.MainMenu
-                                                    "PENDING" -> Screen.Pending
-                                                    else -> Screen.Blocked
+                    Box(modifier = Modifier.padding(0.dp)) {
+                        when (val screen = currentScreen) {
+                            is Screen.LanguageSelection -> {
+                                LanguageSelectionScreen(
+                                    onLanguageSelected = { language ->
+                                        selectedLanguage = language
+                                        navigateTo(Screen.Auth)
+                                    }
+                                )
+                            }
+
+                            is Screen.Auth -> {
+                                AuthScreen(
+                                    errorMessage = errorMessage,
+                                    isLoading = isAuthenticating,
+                                    onModeChanged = { errorMessage = null },
+                                    onLogin = { username, password ->
+                                        scope.launch {
+                                            isAuthenticating = true
+                                            errorMessage = null
+                                            try {
+                                                val response = ApiClient.login(LoginRequestDto(username, password))
+                                                if (response.success) {
+                                                    loggedInUsername = username
+                                                    loggedInPassword = password
+                                                    licenseStatus = response.licenseStatus
+                                                    navigateTo(
+                                                        when (response.licenseStatus) {
+                                                            "ACTIVE" -> Screen.MainMenu
+                                                            "PENDING" -> Screen.Pending
+                                                            else -> Screen.Blocked
+                                                        }
+                                                    )
+                                                } else {
+                                                    errorMessage = response.message
                                                 }
-                                            )
-                                        } else {
-                                            errorMessage = response.message
+                                            } catch (e: Exception) {
+                                                errorMessage = friendlyServerErrorMessage(e)
+                                            }
+                                            isAuthenticating = false
                                         }
-                                    } catch (e: Exception) {
-                                        errorMessage = friendlyServerErrorMessage(e)
+                                    },
+                                    onRegister = { user ->
+                                        scope.launch {
+                                            isAuthenticating = true
+                                            errorMessage = null
+                                            try {
+                                                val response = ApiClient.register(
+                                                    RegisterRequestDto(
+                                                        firstName = user.firstName,
+                                                        lastName = user.lastName,
+                                                        email = user.email,
+                                                        username = user.username,
+                                                        password = user.password
+                                                    )
+                                                )
+                                                if (response.success) {
+                                                    pendingUsername = user.username
+                                                    pendingPassword = user.password
+                                                    resendCooldownSeconds = 0
+                                                    isResendingCode = false
+                                                    resendExhausted = false
+                                                    resendCount = 0
+                                                    navigateTo(Screen.VerifyCode(user.email))
+                                                } else {
+                                                    errorMessage = response.message
+                                                }
+                                            } catch (e: Exception) {
+                                                errorMessage = friendlyServerErrorMessage(e)
+                                            }
+                                            isAuthenticating = false
+                                        }
                                     }
-                                    isAuthenticating = false
-                                }
-                            },
-                            onRegister = { user ->
-                                scope.launch {
-                                    isAuthenticating = true
-                                    errorMessage = null
-                                    try {
-                                        val response = ApiClient.register(
-                                            RegisterRequestDto(
-                                                firstName = user.firstName,
-                                                lastName = user.lastName,
-                                                email = user.email,
-                                                username = user.username,
-                                                password = user.password
-                                            )
-                                        )
-                                        if (response.success) {
-                                            pendingUsername = user.username
-                                            pendingPassword = user.password
-                                            resendCooldownSeconds = 0
+                                )
+                            }
+
+                            is Screen.Pending -> {
+                                PendingScreen(
+                                    isChecking = isChecking,
+                                    onCheckStatus = {
+                                        scope.launch {
+                                            isChecking = true
+                                            try {
+                                                val response = ApiClient.login(
+                                                    LoginRequestDto(loggedInUsername!!, loggedInPassword!!)
+                                                )
+                                                if (response.success) {
+                                                    licenseStatus = response.licenseStatus
+                                                    when (response.licenseStatus) {
+                                                        "ACTIVE" -> navigateReplacingPending(Screen.MainMenu)
+                                                        "BLOCKED", "EXPIRED" -> navigateReplacingPending(Screen.Blocked)
+                                                        else -> { /* остаёмся ждать */ }
+                                                    }
+                                                }
+                                            } catch (_: Exception) {
+                                            }
+                                            isChecking = false
+                                        }
+                                    },
+                                    onGoToSupport = { navigateTo(Screen.Support) }
+                                )
+                            }
+
+                            is Screen.VerifyCode -> {
+                                VerifyCodeScreen(
+                                    email = screen.email,
+                                    errorMessage = verifyErrorMessage,
+                                    isVerifying = isVerifyingCode,
+                                    onVerify = { code ->
+                                        scope.launch {
+                                            isVerifyingCode = true
+                                            verifyErrorMessage = null
+                                            try {
+                                                val response = ApiClient.verifyRegistration(
+                                                    VerifyRegistrationRequestDto(
+                                                        username = pendingUsername!!,
+                                                        code = code
+                                                    )
+                                                )
+                                                if (response.success) {
+                                                    loggedInUsername = pendingUsername
+                                                    loggedInPassword = pendingPassword
+                                                    licenseStatus = response.licenseStatus
+                                                    navigateReplacingCurrent(Screen.Pending)
+                                                } else {
+                                                    verifyErrorMessage = response.message
+                                                }
+                                            } catch (e: Exception) {
+                                                verifyErrorMessage = "Server unreachable: ${e.message}"
+                                            }
+                                            isVerifyingCode = false
+                                        }
+                                    },
+                                    resendCooldownSeconds = resendCooldownSeconds,
+                                    isResending = isResendingCode,
+                                    resendExhausted = resendExhausted,
+                                    onResendCode = {
+                                        scope.launch {
+                                            isResendingCode = true
+                                            verifyErrorMessage = null
+                                            try {
+                                                val response = ApiClient.resendCode(ResendCodeRequestDto(username = pendingUsername!!))
+                                                if (response.success) {
+                                                    resendCount += 1
+                                                    if (resendCount >= 3) {
+                                                        resendExhausted = true
+                                                    } else {
+                                                        resendCooldownSeconds = 60
+                                                    }
+                                                } else {
+                                                    verifyErrorMessage = response.message
+                                                    val cooldownMatch = Regex("\\d+").find(response.message ?: "")
+                                                    if (cooldownMatch != null) {
+                                                        resendCooldownSeconds = cooldownMatch.value.toInt()
+                                                    } else {
+                                                        resendExhausted = true
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                verifyErrorMessage = "Server unreachable: ${e.message}"
+                                            }
                                             isResendingCode = false
-                                            resendExhausted = false
-                                            resendCount = 0
-                                            navigateTo(Screen.VerifyCode(user.email))
-                                        } else {
-                                            errorMessage = response.message
                                         }
-                                    } catch (e: Exception) {
-                                        errorMessage = friendlyServerErrorMessage(e)
-                                    }
-                                    isAuthenticating = false
-                                }
+                                    },
+                                    onContactSupport = { navigateTo(Screen.Support) }
+                                )
                             }
-                        )
-                    }
 
-                    is Screen.Pending -> {
-                        PendingScreen(
-                            isChecking = isChecking,
-                            onCheckStatus = {
-                                scope.launch {
-                                    isChecking = true
-                                    try {
-                                        val response = ApiClient.login(
-                                            LoginRequestDto(loggedInUsername!!, loggedInPassword!!)
-                                        )
-                                        if (response.success) {
-                                            licenseStatus = response.licenseStatus
-                                            when (response.licenseStatus) {
-                                                "ACTIVE" -> navigateReplacingPending(Screen.MainMenu)
-                                                "BLOCKED", "EXPIRED" -> navigateReplacingPending(Screen.Blocked)
-                                                else -> { /* остаёмся ждать */ }
+                            is Screen.Support -> {
+                                SupportScreen(
+                                    isSending = isSendingSupport,
+                                    sentSuccessfully = supportSentSuccessfully,
+                                    errorMessage = supportErrorMessage,
+                                    onSend = { message, phone, email ->
+                                        scope.launch {
+                                            isSendingSupport = true
+                                            try {
+                                                val response = ApiClient.sendSupportRequest(
+                                                    SupportRequestDto(
+                                                        username = loggedInUsername ?: pendingUsername ?: "unknown",
+                                                        message = message,
+                                                        phone = phone.ifBlank { null },
+                                                        email = email.ifBlank { null }
+                                                    )
+                                                )
+                                                if (response.success) {
+                                                    supportSentSuccessfully = true
+                                                } else {
+                                                    supportErrorMessage = response.message
+                                                }
+                                            } catch (_: Exception) {
+                                            }
+                                            isSendingSupport = false
+                                        }
+                                    },
+                                    onBackToRegistration = { resetToStart() },
+                                    onKeepWaiting = {
+                                        supportSentSuccessfully = false
+                                        navigateBack()
+                                    }
+                                )
+                            }
+
+                            is Screen.Blocked -> {
+                                BlockedScreen(
+                                    isSending = isSendingSupport,
+                                    sentSuccessfully = supportSentSuccessfully,
+                                    errorMessage = supportErrorMessage,
+                                    onSend = { message, phone, email ->
+                                        scope.launch {
+                                            isSendingSupport = true
+                                            try {
+                                                val response = ApiClient.sendSupportRequest(
+                                                    SupportRequestDto(
+                                                        username = loggedInUsername ?: "unknown",
+                                                        message = message,
+                                                        phone = phone.ifBlank { null },
+                                                        email = email.ifBlank { null }
+                                                    )
+                                                )
+                                                if (response.success) {
+                                                    supportSentSuccessfully = true
+                                                } else {
+                                                    supportErrorMessage = response.message
+                                                }
+                                            } catch (_: Exception) {
+                                            }
+                                            isSendingSupport = false
+                                        }
+                                    },
+                                    onBackToRegistration = { resetToStart() }
+                                )
+                            }
+
+                            is Screen.MainMenu -> {
+                                MainMenuScreen(
+                                    username = loggedInUsername ?: "",
+                                    refreshKey = menuRefreshTrigger,
+                                    onTestSelected = { test, mode ->
+                                        navigateTo(Screen.Test(test, mode))
+                                    },
+                                    onOpenStats = {
+                                        navigateTo(Screen.Stats)
+                                        scope.launch {
+                                            isLoadingStats = true
+                                            try {
+                                                val response = ApiClient.getResults(loggedInUsername ?: "")
+                                                statsResults = response.results
+                                            } catch (_: Exception) {
+                                                statsResults = emptyList()
+                                            }
+                                            isLoadingStats = false
+                                        }
+                                    }
+                                )
+                            }
+
+                            is Screen.Stats -> {
+                                StatsScreen(
+                                    isLoading = isLoadingStats,
+                                    results = statsResults
+                                )
+                            }
+
+                            is Screen.Test -> {
+                                TestScreen(
+                                    test = screen.test,
+                                    mode = screen.mode,
+                                    username = loggedInUsername ?: "",
+                                    scope = scope,
+                                    onFinish = { navigateBack() },
+                                    onSaveResult = { correctCount, total ->
+                                        scope.launch {
+                                            try {
+                                                ApiClient.saveResult(
+                                                    SaveResultRequestDto(
+                                                        username = loggedInUsername ?: "",
+                                                        testNumber = screen.test.number,
+                                                        mode = screen.mode.name,
+                                                        correctCount = correctCount,
+                                                        totalQuestions = total
+                                                    )
+                                                )
+                                                menuRefreshTrigger++
+                                            } catch (_: Exception) {
                                             }
                                         }
-                                    } catch (_: Exception) {
                                     }
-                                    isChecking = false
-                                }
-                            },
-                            onGoToSupport = { navigateTo(Screen.Support) }
-                        )
-                    }
-
-                    is Screen.VerifyCode -> {
-                        VerifyCodeScreen(
-                            email = screen.email,
-                            errorMessage = verifyErrorMessage,
-                            isVerifying = isVerifyingCode,
-                            onVerify = { code ->
-                                scope.launch {
-                                    isVerifyingCode = true
-                                    verifyErrorMessage = null
-                                    try {
-                                        val response = ApiClient.verifyRegistration(
-                                            VerifyRegistrationRequestDto(
-                                                username = pendingUsername!!,
-                                                code = code
-                                            )
-                                        )
-                                        if (response.success) {
-                                            loggedInUsername = pendingUsername
-                                            loggedInPassword = pendingPassword
-                                            licenseStatus = response.licenseStatus
-                                            navigateReplacingCurrent(Screen.Pending)
-                                        } else {
-                                            verifyErrorMessage = response.message
-                                        }
-                                    } catch (e: Exception) {
-                                        verifyErrorMessage = "Server unreachable: ${e.message}"
-                                    }
-                                    isVerifyingCode = false
-                                }
-                            },
-                            resendCooldownSeconds = resendCooldownSeconds,
-                            isResending = isResendingCode,
-                            resendExhausted = resendExhausted,
-                            onResendCode = {
-                                scope.launch {
-                                    isResendingCode = true
-                                    verifyErrorMessage = null
-                                    try {
-                                        val response = ApiClient.resendCode(ResendCodeRequestDto(username = pendingUsername!!))
-                                        if (response.success) {
-                                            resendCount += 1
-                                            if (resendCount >= 3) {
-                                                resendExhausted = true
-                                            } else {
-                                                resendCooldownSeconds = 60
-                                            }
-                                        } else {
-                                            verifyErrorMessage = response.message
-                                            val cooldownMatch = Regex("\\d+").find(response.message ?: "")
-                                            if (cooldownMatch != null) {
-                                                resendCooldownSeconds = cooldownMatch.value.toInt()
-                                            } else {
-                                                resendExhausted = true
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        verifyErrorMessage = "Server unreachable: ${e.message}"
-                                    }
-                                    isResendingCode = false
-                                }
-                            },
-                            onContactSupport = { navigateTo(Screen.Support) }
-                        )
-                    }
-
-                    is Screen.Support -> {
-                        SupportScreen(
-                            isSending = isSendingSupport,
-                            sentSuccessfully = supportSentSuccessfully,
-                            errorMessage = supportErrorMessage,
-                            onSend = { message, phone, email ->
-                                scope.launch {
-                                    isSendingSupport = true
-                                    try {
-                                        val response = ApiClient.sendSupportRequest(
-                                            SupportRequestDto(
-                                                username = loggedInUsername ?: pendingUsername ?: "unknown",
-                                                message = message,
-                                                phone = phone.ifBlank { null },
-                                                email = email.ifBlank { null }
-                                            )
-                                        )
-                                        if (response.success) {
-                                            supportSentSuccessfully = true
-                                        } else {
-                                            supportErrorMessage = response.message
-                                        }
-                                    } catch (_: Exception) {
-                                    }
-                                    isSendingSupport = false
-                                }
-                            },
-                            onBackToRegistration = { resetToStart() },
-                            onKeepWaiting = {
-                                supportSentSuccessfully = false
-                                navigateBack()
+                                )
                             }
-                        )
-                    }
-
-                    is Screen.Blocked -> {
-                        BlockedScreen(
-                            isSending = isSendingSupport,
-                            sentSuccessfully = supportSentSuccessfully,
-                            errorMessage = supportErrorMessage,
-                            onSend = { message, phone, email ->
-                                scope.launch {
-                                    isSendingSupport = true
-                                    try {
-                                        val response = ApiClient.sendSupportRequest(
-                                            SupportRequestDto(
-                                                username = loggedInUsername ?: "unknown",
-                                                message = message,
-                                                phone = phone.ifBlank { null },
-                                                email = email.ifBlank { null }
-                                            )
-                                        )
-                                        if (response.success) {
-                                            supportSentSuccessfully = true
-                                        } else {
-                                            supportErrorMessage = response.message
-                                        }
-                                    } catch (_: Exception) {
-                                    }
-                                    isSendingSupport = false
-                                }
-                            },
-                            onBackToRegistration = { resetToStart() }
-                        )
-                    }
-
-                    is Screen.MainMenu -> {
-                        MainMenuScreen(
-                            username = loggedInUsername ?: "",
-                            onTestSelected = { test, mode ->
-                                navigateTo(Screen.Test(test, mode))
-                            },
-                            onOpenStats = {
-                                navigateTo(Screen.Stats)
-                                scope.launch {
-                                    isLoadingStats = true
-                                    try {
-                                        val response = ApiClient.getResults(loggedInUsername ?: "")
-                                        statsResults = response.results
-                                    } catch (_: Exception) {
-                                        statsResults = emptyList()
-                                    }
-                                    isLoadingStats = false
-                                }
-                            }
-                        )
-                    }
-
-                    is Screen.Stats -> {
-                        StatsScreen(
-                            isLoading = isLoadingStats,
-                            results = statsResults
-                        )
-                    }
-
-                    is Screen.Test -> {
-                        TestScreen(
-                            test = screen.test,
-                            mode = screen.mode,
-                            username = loggedInUsername ?: "",
-                            scope = scope,
-                            onFinish = { navigateBack() },
-                            onSaveResult = { correctCount, total ->
-                                scope.launch {
-                                    try {
-                                        ApiClient.saveResult(
-                                            SaveResultRequestDto(
-                                                username = loggedInUsername ?: "",
-                                                testNumber = screen.test.number,
-                                                mode = screen.mode.name,
-                                                correctCount = correctCount,
-                                                totalQuestions = total
-                                            )
-                                        )
-                                    } catch (_: Exception) {
-                                    }
-                                }
-                            }
-                        )
+                        }
                     }
                 }
             }
