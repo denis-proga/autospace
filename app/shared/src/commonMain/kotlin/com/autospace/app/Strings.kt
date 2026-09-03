@@ -10,6 +10,7 @@ data class AppStrings(
     val commonWakingHint: String,
     val commonSupport: String,
     val commonBack: String,
+    val commonLogout: String,
 
     val themeSwitchToLight: String,
     val themeSwitchToDark: String,
@@ -107,6 +108,7 @@ val RussianStrings = AppStrings(
     commonWakingHint = "Подключение к серверу… Обычно это занимает до минуты",
     commonSupport = "Написать в поддержку",
     commonBack = "← Назад",
+    commonLogout = "Выйти",
 
     themeSwitchToLight = "☀ Светлая тема",
     themeSwitchToDark = "🌙 Тёмная тема",
@@ -204,6 +206,7 @@ val EnglishStrings = AppStrings(
     commonWakingHint = "Connecting to server… This can take up to a minute",
     commonSupport = "Contact support",
     commonBack = "← Back",
+    commonLogout = "Log out",
 
     themeSwitchToLight = "☀ Light theme",
     themeSwitchToDark = "🌙 Dark theme",
@@ -301,6 +304,7 @@ val SpanishStrings = AppStrings(
     commonWakingHint = "Conectando con el servidor… Puede tardar hasta un minuto",
     commonSupport = "Escribir a soporte",
     commonBack = "← Atrás",
+    commonLogout = "Cerrar sesión",
 
     themeSwitchToLight = "☀ Tema claro",
     themeSwitchToDark = "🌙 Tema oscuro",
@@ -398,6 +402,7 @@ val GermanStrings = AppStrings(
     commonWakingHint = "Verbindung zum Server… Das kann bis zu einer Minute dauern",
     commonSupport = "An den Support schreiben",
     commonBack = "← Zurück",
+    commonLogout = "Abmelden",
 
     themeSwitchToLight = "☀ Helles Design",
     themeSwitchToDark = "🌙 Dunkles Design",
@@ -495,6 +500,7 @@ val UkrainianStrings = AppStrings(
     commonWakingHint = "Підключення до сервера… Зазвичай це займає до хвилини",
     commonSupport = "Написати в підтримку",
     commonBack = "← Назад",
+    commonLogout = "Вийти",
 
     themeSwitchToLight = "☀ Світла тема",
     themeSwitchToDark = "🌙 Темна тема",

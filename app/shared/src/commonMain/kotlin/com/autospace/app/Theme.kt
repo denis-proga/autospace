@@ -6,72 +6,89 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// Асфальт — фон в тёмной теме, цвет текста в светлой. Один и тот же смысл, разные роли.
-val AsphaltDark = Color(0xFF24262A)
-val AsphaltDarkSurface = Color(0xFF2F3237)
-
-val ConcreteLight = Color(0xFFF2F3F2)
-val ConcreteLightSurface = Color(0xFFFFFFFF)
-
-// Дорожная разметка — фирменный акцент, чуть темнее в светлой теме ради контраста.
-val RoadMarkingYellowDark = Color(0xFFF2B705)
-val RoadMarkingYellowLight = Color(0xFFE0A400)
-
-// Семантика дорожных знаков — общая для обеих тем, чуть темнее в светлой для контраста на белом.
-val SignGreenDark = Color(0xFF4CAF6D)
-val SignGreenLight = Color(0xFF3D9159)
-
-val SignRedDark = Color(0xFFE24B4B)
-val SignRedLight = Color(0xFFC93E3E)
-
-val SignBlueDark = Color(0xFF3E7CE0)
-val SignBlueLight = Color(0xFF2E63C2)
-
-val TextOnDark = Color(0xFFECE9E1)
-val TextOnLight = AsphaltDark
-
-enum class AppTheme {
-    Light,
-    Dark
-}
+enum class AppTheme { Light, Dark }
 
 val LocalAppTheme = compositionLocalOf { AppTheme.Dark }
 
+data class AppColors(
+    val bg0: Color,
+    val bg1: Color,
+    val card: Color,
+    val border: Color,
+    val borderStrong: Color,
+    val accent: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val success: Color,
+    val error: Color,
+    val examBlue: Color
+)
+
+fun darkAppColors() = AppColors(
+    bg0 = Color(0xFF0A0917),
+    bg1 = Color(0xFF100E24),
+    card = Color(0x09FFFFFF),
+    border = Color(0x17FFFFFF),
+    borderStrong = Color(0x29FFFFFF),
+    accent = Color(0xFF8B5CF6),
+    textPrimary = Color(0xFFF5F3FB),
+    textSecondary = Color(0xFF9E98B8),
+    success = Color(0xFF4CAF6D),
+    error = Color(0xFFE24B4B),
+    examBlue = Color(0xFF3E7CE0)
+)
+
+fun lightAppColors() = AppColors(
+    bg0 = Color(0xFFF5F4FA),
+    bg1 = Color(0xFFF5F4FA),
+    card = Color(0xFFFFFFFF),
+    border = Color(0x17171317),
+    borderStrong = Color(0x29171317),
+    accent = Color(0xFF7C3AED),
+    textPrimary = Color(0xFF16132B),
+    textSecondary = Color(0xFF625C78),
+    success = Color(0xFF3D9159),
+    error = Color(0xFFC93E3E),
+    examBlue = Color(0xFF2E63C2)
+)
+
+fun appColorsFor(theme: AppTheme) = if (theme == AppTheme.Dark) darkAppColors() else lightAppColors()
+
+val LocalAppColors = compositionLocalOf { darkAppColors() }
+
 fun autoSpaceColorScheme(theme: AppTheme): ColorScheme {
+    val c = appColorsFor(theme)
     return if (theme == AppTheme.Dark) {
         darkColorScheme(
-            primary = RoadMarkingYellowDark,
-            onPrimary = AsphaltDark,
-            background = AsphaltDark,
-            onBackground = TextOnDark,
-            surface = AsphaltDarkSurface,
-            onSurface = TextOnDark,
-            surfaceVariant = AsphaltDarkSurface,
-            onSurfaceVariant = TextOnDark,
-            error = SignRedDark,
-            onError = TextOnDark,
-            outline = Color(0xFF57595E)
+            primary = c.accent,
+            onPrimary = Color.White,
+            background = c.bg0,
+            onBackground = c.textPrimary,
+            surface = c.bg1,
+            onSurface = c.textPrimary,
+            surfaceVariant = c.card,
+            onSurfaceVariant = c.textSecondary,
+            error = c.error,
+            onError = Color.White,
+            outline = c.border
         )
     } else {
         lightColorScheme(
-            primary = RoadMarkingYellowLight,
-            onPrimary = TextOnLight,
-            background = ConcreteLight,
-            onBackground = TextOnLight,
-            surface = ConcreteLightSurface,
-            onSurface = TextOnLight,
-            surfaceVariant = Color(0xFFE6E7E6),
-            onSurfaceVariant = TextOnLight,
-            error = SignRedLight,
-            onError = ConcreteLightSurface,
-            outline = Color(0xFFB8BAB9)
+            primary = c.accent,
+            onPrimary = Color.White,
+            background = c.bg0,
+            onBackground = c.textPrimary,
+            surface = c.card,
+            onSurface = c.textPrimary,
+            surfaceVariant = Color(0xFFEFEDF7),
+            onSurfaceVariant = c.textSecondary,
+            error = c.error,
+            onError = Color.White,
+            outline = c.border
         )
     }
 }
 
-// Цвета для семантики "правильно/неправильно/экзамен", которые сейчас разбросаны
-// по коду как Color(0xFF...) в TestScreen/MainMenuScreen/StatsScreen — собираем их сюда,
-// чтобы дальше менять в одном месте, а не по всем экранам разом.
 data class SemanticColors(
     val correct: Color,
     val incorrect: Color,
@@ -79,29 +96,14 @@ data class SemanticColors(
     val examCompleted: Color
 )
 
-val LocalSemanticColors = compositionLocalOf {
-    SemanticColors(
-        correct = SignGreenDark,
-        incorrect = SignRedDark,
-        examSelected = Color(0xFF7E57C2),
-        examCompleted = SignBlueDark
-    )
-}
+val LocalSemanticColors = compositionLocalOf { semanticColorsFor(AppTheme.Dark) }
 
 fun semanticColorsFor(theme: AppTheme): SemanticColors {
-    return if (theme == AppTheme.Dark) {
-        SemanticColors(
-            correct = SignGreenDark,
-            incorrect = SignRedDark,
-            examSelected = Color(0xFF9575CD),
-            examCompleted = SignBlueDark
-        )
-    } else {
-        SemanticColors(
-            correct = SignGreenLight,
-            incorrect = SignRedLight,
-            examSelected = Color(0xFF7E57C2),
-            examCompleted = SignBlueLight
-        )
-    }
+    val c = appColorsFor(theme)
+    return SemanticColors(
+        correct = c.success,
+        incorrect = c.error,
+        examSelected = c.accent,
+        examCompleted = c.examBlue
+    )
 }

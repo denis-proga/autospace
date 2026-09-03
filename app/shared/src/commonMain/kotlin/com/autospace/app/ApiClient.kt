@@ -119,6 +119,20 @@ data class ResetProgressRequestDto(
     val username: String
 )
 
+@Serializable
+data class SessionRequestDto(
+    val token: String
+)
+
+@Serializable
+data class LoginResponseDto(
+    val success: Boolean,
+    val message: String,
+    val licenseStatus: String? = null,
+    val username: String? = null,
+    val token: String? = null
+)
+
 object ApiClient {
     // ВАЖНО: для Android-эмулятора localhost сервера — это 10.0.2.2, а не 127.0.0.1
     // Для Desktop — 127.0.0.1 подходит
@@ -155,10 +169,17 @@ object ApiClient {
         }.body()
     }
 
-    suspend fun login(request: LoginRequestDto): AuthResponseDto {
+    suspend fun login(request: LoginRequestDto): LoginResponseDto {
         return client.post("$BASE_URL/login") {
             contentType(ContentType.Application.Json)
             setBody(request)
+        }.body()
+    }
+
+    suspend fun checkSession(token: String): LoginResponseDto {
+        return client.post("$BASE_URL/session") {
+            contentType(ContentType.Application.Json)
+            setBody(SessionRequestDto(token))
         }.body()
     }
 
