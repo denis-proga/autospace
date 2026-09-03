@@ -118,6 +118,7 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.create(Users, TestResults, Questions, TestProgress)
+        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress)
     }
+
 }
