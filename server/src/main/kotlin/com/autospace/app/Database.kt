@@ -18,6 +18,7 @@ object Users : Table("users") {
     val licenseExpiresAt = long("license_expires_at").nullable() // timestamp в миллисекундах
 
     val supportMessagesCount = integer("support_messages_count").default(0)
+    val sessionToken = varchar("session_token", 64).nullable()
 
     override val primaryKey = PrimaryKey(id)
 }

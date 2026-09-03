@@ -24,6 +24,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.selectAll
+import java.util.UUID
 
 fun main() {
     initDatabase()
@@ -261,13 +262,57 @@ fun Application.module() {
             val request = call.receive<LoginRequest>()
 
             val user = transaction {
-                Users.select(Users.id, Users.passwordHash, Users.licenseStatus, Users.licenseExpiresAt)
+                Users.select(Users.id, Users.username, Users.passwordHash, Users.licenseStatus, Users.licenseExpiresAt)
                     .where { Users.username eq request.username }
                     .singleOrNull()
             }
 
             if (user == null || !verifyPassword(request.password, user[Users.passwordHash])) {
-                call.respond(AuthResponse(success = false, message = "Invalid username or password"))
+                call.respond(LoginResponse(success = false, message = "Invalid username or password"))
+                return@post
+            }
+
+            var licenseStatus = user[Users.licenseStatus]
+            val expiresAt = user[Users.licenseExpiresAt]
+
+            if (licenseStatus == "ACTIVE" && expiresAt != null && expiresAt < System.currentTimeMillis()) {
+                licenseStatus = "EXPIRED"
+                transaction {
+                    Users.update({ Users.id eq user[Users.id] }) {
+                        it[Users.licenseStatus] = "EXPIRED"
+                    }
+                }
+            }
+
+            val token = UUID.randomUUID().toString()
+            transaction {
+                Users.update({ Users.id eq user[Users.id] }) {
+                    it[sessionToken] = token
+                }
+            }
+
+            call.respond(
+                LoginResponse(
+                    success = true,
+                    message = "Login successful",
+                    licenseStatus = licenseStatus,
+                    username = user[Users.username],
+                    token = token
+                )
+            )
+        }
+
+        post("/session") {
+            val request = call.receive<SessionRequest>()
+
+            val user = transaction {
+                Users.select(Users.id, Users.username, Users.licenseStatus, Users.licenseExpiresAt)
+                    .where { Users.sessionToken eq request.token }
+                    .singleOrNull()
+            }
+
+            if (user == null) {
+                call.respond(LoginResponse(success = false, message = "Invalid session"))
                 return@post
             }
 
@@ -284,10 +329,12 @@ fun Application.module() {
             }
 
             call.respond(
-                AuthResponse(
+                LoginResponse(
                     success = true,
-                    message = "Login successful",
-                    licenseStatus = licenseStatus
+                    message = "Session valid",
+                    licenseStatus = licenseStatus,
+                    username = user[Users.username],
+                    token = request.token
                 )
             )
         }

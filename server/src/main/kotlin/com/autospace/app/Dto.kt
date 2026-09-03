@@ -125,3 +125,17 @@ data class ProgressResponse(
 data class ResetProgressRequest(
     val username: String
 )
+
+@Serializable
+data class SessionRequest(
+    val token: String
+)
+
+@Serializable
+data class LoginResponse(
+    val success: Boolean,
+    val message: String,
+    val licenseStatus: String? = null,
+    val username: String? = null,
+    val token: String? = null
+)

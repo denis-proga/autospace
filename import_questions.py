@@ -18,13 +18,13 @@ ws = wb["Вопросы"]
 header_row = [cell.value for cell in ws[1]]
 col_index = {name: idx for idx, name in enumerate(header_row) if name}
 
-required = ["test_number", "image_filename", "question_text_ru", "option_a_ru",
-            "option_b_ru", "option_c_ru", "option_d_ru", "correct_option", "explanation_ru", "question_key"]
-missing = [c for c in required if c not in col_index]
-if missing:
-    print(f"В таблице нет колонок: {missing}")
-    print(f"Реально найденные заголовки: {list(col_index.keys())}")
-    sys.exit(1)
+required = ["test_number", "image_filename", "correct_option", "question_key"]
+for col_name in required:
+    if col_name not in col_index:
+        print(f"В таблице нет колонки {col_name}")
+        sys.exit(1)
+
+langs = ["ru", "en", "es", "de", "uk"]
 
 conn = psycopg2.connect(DATABASE_URL)
 cur = conn.cursor()
@@ -35,20 +35,16 @@ skipped = 0
 
 for row in ws.iter_rows(min_row=2, values_only=True):
     def get(col_name):
-        return row[col_index[col_name]]
+        idx = col_index.get(col_name)
+        return row[idx] if idx is not None else None
 
     test_number = get("test_number")
     image_filename = get("image_filename")
-    question_text = get("question_text_ru")
-    option_a = get("option_a_ru")
-    option_b = get("option_b_ru")
-    option_c = get("option_c_ru")
-    option_d = get("option_d_ru")
     correct_option = get("correct_option")
-    explanation = get("explanation_ru")
     question_key = get("question_key")
+    question_text_ru = get("question_text_ru")
 
-    if not test_number or not image_filename or not question_text or not question_key:
+    if not test_number or not image_filename or not question_text_ru or not question_key:
         skipped += 1
         continue
 
@@ -58,23 +54,43 @@ for row in ws.iter_rows(min_row=2, values_only=True):
 
     key = str(question_key).strip()
 
+    values_by_lang = {}
+    for lang in langs:
+        values_by_lang[lang] = {
+            "question_text": get(f"question_text_{lang}"),
+            "option_a": get(f"option_a_{lang}"),
+            "option_b": get(f"option_b_{lang}"),
+            "option_c": get(f"option_c_{lang}"),
+            "option_d": get(f"option_d_{lang}"),
+            "explanation": get(f"explanation_{lang}"),
+        }
+
     cur.execute("SELECT id FROM questions WHERE question_key = %s", (key,))
     existing = cur.fetchone()
 
+    columns = ["test_number", "image_filename", "correct_option",
+               "question_text", "option_a", "option_b", "option_c", "option_d", "explanation"]
+    values = [test_number, filename, correct_option,
+              values_by_lang["ru"]["question_text"], values_by_lang["ru"]["option_a"],
+              values_by_lang["ru"]["option_b"], values_by_lang["ru"]["option_c"],
+              values_by_lang["ru"]["option_d"], values_by_lang["ru"]["explanation"]]
+
+    for lang in ["en", "es", "de", "uk"]:
+        columns += [f"question_text_{lang}", f"option_a_{lang}", f"option_b_{lang}",
+                    f"option_c_{lang}", f"option_d_{lang}", f"explanation_{lang}"]
+        values += [values_by_lang[lang]["question_text"], values_by_lang[lang]["option_a"],
+                   values_by_lang[lang]["option_b"], values_by_lang[lang]["option_c"],
+                   values_by_lang[lang]["option_d"], values_by_lang[lang]["explanation"]]
+
     if existing:
-        cur.execute("""
-            UPDATE questions
-            SET test_number = %s, image_filename = %s, question_text = %s, option_a = %s, option_b = %s,
-                option_c = %s, option_d = %s, correct_option = %s, explanation = %s
-            WHERE question_key = %s
-        """, (test_number, filename, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, key))
+        set_clause = ", ".join(f"{col} = %s" for col in columns)
+        cur.execute(f"UPDATE questions SET {set_clause} WHERE question_key = %s", values + [key])
         updated += 1
     else:
-        cur.execute("""
-            INSERT INTO questions
-            (question_key, test_number, image_filename, question_text, option_a, option_b, option_c, option_d, correct_option, explanation)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (key, test_number, filename, question_text, option_a, option_b, option_c, option_d, correct_option, explanation))
+        cur.execute(
+            f"INSERT INTO questions (question_key, {', '.join(columns)}) VALUES (%s, {', '.join(['%s'] * len(columns))})",
+            [key] + values
+        )
         inserted += 1
 
 conn.commit()
