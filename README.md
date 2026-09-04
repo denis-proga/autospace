@@ -1,38 +1,82 @@
-This is a Kotlin Multiplatform project targeting Android, Desktop (JVM), Server.
+# AutoSpace
 
-* [/app/shared](./app/shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./app/shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./app/shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./app/shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Приложение для подготовки к теоретическому экзамену по вождению — Desktop и Android из одной кодовой базы на Kotlin Multiplatform.
 
-* [/core](./core/src) is for the code that will be shared between all targets in the project.
-  The most important subfolder is [commonMain](./core/src/commonMain/kotlin). If preferred, you
-  can add code to the platform-specific folders here too.
+## Возможности
 
-* [/server](./server/src/main/kotlin) is for the Ktor server application.
+- **Два режима подготовки** — Обучение (мгновенная подсветка правильных ответов и объяснение к каждому вопросу) и Экзамен (таймер, без возможности изменить уже данный ответ)
+- **Реальные вопросы** — банк вопросов с фотографиями настоящих дорожных ситуаций, а не абстрактными схемами
+- **Автосохранение прогресса** — можно закрыть приложение на середине теста и продолжить с того же места на любом устройстве
+- **Одна попытка на тест** — карточка теста окрашивается по результату (зелёный/красный для обучения, синий для экзамена), с возможностью сбросить всю статистику
+- **Статистика** — график динамики результатов по всем пройденным тестам
+- **5 языков интерфейса** — русский, английский, испанский, немецкий, украинский
+- **Светлая/тёмная тема** — техно-премиальная эстетика, обе темы откалиброваны отдельно (не инверсия друг друга)
+- **Адаптивная вёрстка** — телефон, планшет, десктоп
+- **Постоянная сессия** — вход не запрашивается заново при каждом перезапуске приложения, токен хранится локально
 
-### Running the apps
+## Технологический стек
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+**Клиент**
+- Kotlin Multiplatform + Compose Multiplatform (Desktop, Android)
+- Ktor Client
+- Собственный загрузчик изображений (без сторонних библиотек — Skia на Desktop, `BitmapFactory` на Android)
 
-- Android app: `./gradlew :app:androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :app:desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :app:desktopApp:run`
-- Server: `./gradlew :server:run`
+**Сервер**
+- Ktor
+- Exposed (ORM) + PostgreSQL ([Neon](https://neon.tech))
+- bcrypt для хеширования паролей, сессионные токены
+- [Resend](https://resend.com) — транзакционные письма (код подтверждения регистрации, на языке пользователя)
+- Telegram Bot API — уведомления администратору о новых регистрациях и обращениях в поддержку
 
-### Running tests
+**Инфраструктура**
+- [Render](https://render.com) — хостинг сервера
+- GitHub Actions — периодический пинг сервера, чтобы не засыпал на бесплатном тарифе
+- Отдельный репозиторий [`autospace-assets`](https://github.com/denis-proga/autospace-assets) — хранение фотографий вопросов
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+## Структура проекта
 
-- Android tests: `./gradlew :app:shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :app:shared:jvmTest`
-- Server tests: `./gradlew :server:test`
+```
+AutoSpace/
+├── app/
+│   ├── shared/          — общий код: экраны, сеть, тема, локализация
+│   ├── desktopApp/       — точка входа Desktop
+│   └── androidApp/       — точка входа Android
+├── server/               — Ktor-сервер, база данных, email, Telegram-бот
+├── scripts/              — вспомогательные скрипты (импорт вопросов, генерация иконок)
+└── core/                 — общие модели данных
+```
 
----
+## Сборка и запуск
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+**Требования:** JDK 17+, Android SDK (для сборки под Android)
+
+Локальный запуск (Desktop):
+```bash
+./gradlew :app:desktopApp:run
+```
+
+Установщик Windows (`.msi`):
+```bash
+./gradlew :app:desktopApp:packageMsi
+```
+Готовый файл — `app/desktopApp/build/compose/binaries/main/msi/`
+
+Android (debug-сборка):
+```bash
+./gradlew :app:androidApp:assembleDebug
+```
+Готовый файл — `app/androidApp/build/outputs/apk/debug/`
+
+Сервер запускается автоматически на Render при пуше в `main`. Для локального запуска сервера база переключается на SQLite, если переменная окружения `DATABASE_URL` не задана.
+
+## Импорт вопросов
+
+Вопросы заполняются в Excel-таблице (шаблон и структура колонок — по запросу) и заливаются в базу скриптом:
+```bash
+python scripts/import_questions.py "путь/к/таблице.xlsx"
+```
+Скрипт умеет как добавлять новые вопросы, так и обновлять существующие — повторный запуск безопасен.
+
+## Автор
+
+[Denys Peresunko](https://deniscodes.com)
