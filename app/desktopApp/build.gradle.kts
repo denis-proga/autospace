@@ -21,8 +21,15 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.autospace.app"
-            packageVersion = "1.0.0"
+            packageName = "AutoSpace"
+            packageVersion = "1.0.1"
+
+            windows {
+                iconFile.set(project.file("app_icon.ico"))
+                menuGroup = "AutoSpace"
+                shortcut = true
+                menu = true
+            }
         }
     }
 }

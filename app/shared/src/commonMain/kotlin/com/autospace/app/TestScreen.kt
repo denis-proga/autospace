@@ -20,13 +20,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,11 +35,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -70,7 +70,9 @@ fun TestScreen(
     onFinish: () -> Unit,
     onSaveResult: (correctCount: Int, total: Int) -> Unit
 ) {
+    val colors = LocalAppColors.current
     val strings = LocalStrings.current
+    val interFamily = interFontFamily()
 
     val windowSizeClass = LocalWindowSizeClass.current
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
@@ -116,8 +118,9 @@ fun TestScreen(
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage,
-                        color = Color(0xFFF44336),
+                        color = colors.error,
                         textAlign = TextAlign.Center,
+                        fontFamily = interFamily,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Button(onClick = { reloadTrigger++ }) {
@@ -128,8 +131,8 @@ fun TestScreen(
                     if (showWakingHint) {
                         Text(
                             text = strings.commonWakingHint,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = interFamily,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(top = 16.dp)
                         )
@@ -161,7 +164,6 @@ fun TestScreen(
                     }
                 }
             } catch (e: Exception) {
-                // тихо игнорируем — тест просто начнётся заново
             }
             progressChecked = true
         }
@@ -184,7 +186,6 @@ fun TestScreen(
                             )
                         )
                     } catch (e: Exception) {
-                        // тихо игнорируем — в следующий раз тест начнётся заново
                     }
                 }
             }
@@ -216,7 +217,8 @@ fun TestScreen(
 
     val question = loadedQuestions[currentIndex]
     val selectedOptionId = answers[currentIndex]
-    val isAnswerLocked = mode == TestMode.LEARNING && selectedOptionId != null
+    val hasAnswered = selectedOptionId != null
+    val isAnswerLocked = mode == TestMode.LEARNING && hasAnswered
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -228,13 +230,34 @@ fun TestScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("${strings.commonTestWord} ${test.number} — ${strings.commonQuestionWord} ${currentIndex + 1}/${loadedQuestions.size}")
+                Text(
+                    text = "${strings.commonTestWord} ${test.number}",
+                    fontFamily = interFamily,
+                    color = colors.textSecondary
+                )
                 if (mode == TestMode.EXAM) {
                     val minutes = secondsLeft / 60
                     val seconds = secondsLeft % 60
-                    Text("⏱ ${minutes}:${seconds.toString().padStart(2, '0')}")
+                    Text(
+                        text = "⏱ ${minutes}:${seconds.toString().padStart(2, '0')}",
+                        fontFamily = interFamily,
+                        color = colors.textPrimary
+                    )
                 }
             }
+
+            Text(
+                text = "${strings.commonQuestionWord} ${currentIndex + 1}/${loadedQuestions.size}",
+                fontFamily = interFamily,
+                color = colors.textSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
+            )
+            SegmentedProgressBar(
+                total = loadedQuestions.size,
+                currentIndex = currentIndex,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             NetworkImage(
                 url = question.imageUrl,
@@ -242,93 +265,159 @@ fun TestScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 220.dp)
-                    .padding(top = 12.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .padding(top = 16.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, colors.border, RoundedCornerShape(14.dp))
             )
 
             Text(
                 text = question.text,
-                style = MaterialTheme.typography.titleMedium,
+                fontFamily = interFamily,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 question.options.forEach { option ->
-                    val backgroundColor = when {
-                        selectedOptionId == null -> MaterialTheme.colorScheme.surfaceVariant
-                        mode == TestMode.EXAM -> {
-                            if (option.id == selectedOptionId) Color(0xFF7E57C2)
-                            else MaterialTheme.colorScheme.surfaceVariant
+                    val isThisSelected = option.id == selectedOptionId
+                    val isThisCorrect = option.id == question.correctOptionId
+
+                    val backgroundColor: Color
+                    val borderColor: Color
+                    val textColor: Color
+                    val rowAlpha: Float
+
+                    when {
+                        !hasAnswered -> {
+                            backgroundColor = colors.card
+                            borderColor = colors.border
+                            textColor = colors.textPrimary
+                            rowAlpha = 1f
                         }
-                        option.id == question.correctOptionId -> Color(0xFF4CAF50)
-                        option.id == selectedOptionId -> Color(0xFFF44336)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
+                        mode == TestMode.EXAM -> {
+                            if (isThisSelected) {
+                                backgroundColor = colors.accent
+                                borderColor = colors.accent
+                                textColor = Color.White
+                            } else {
+                                backgroundColor = colors.card
+                                borderColor = colors.border
+                                textColor = colors.textPrimary
+                            }
+                            rowAlpha = 1f
+                        }
+                        isThisCorrect -> {
+                            backgroundColor = colors.success
+                            borderColor = colors.success
+                            textColor = Color.White
+                            rowAlpha = 1f
+                        }
+                        isThisSelected -> {
+                            backgroundColor = colors.error
+                            borderColor = colors.error
+                            textColor = Color.White
+                            rowAlpha = 1f
+                        }
+                        else -> {
+                            backgroundColor = colors.card
+                            borderColor = colors.border
+                            textColor = colors.textPrimary
+                            rowAlpha = 0.45f
+                        }
                     }
 
-                    Button(
-                        onClick = {
-                            if (!isAnswerLocked) {
+                    val rowLocked = isAnswerLocked
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .alpha(rowAlpha)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(backgroundColor)
+                            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+                            .clickable(enabled = !rowLocked) {
                                 answers[currentIndex] = option.id
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
                     ) {
-                        Text(option.text)
+                        Text(text = option.text, fontFamily = interFamily, color = textColor)
                     }
                 }
             }
 
-            if (selectedOptionId != null && mode == TestMode.LEARNING) {
-                OutlinedButton(
-                    onClick = { showExplanation = true },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                ) {
-                    Text(strings.testExplanation)
-                }
+            if (hasAnswered && mode == TestMode.LEARNING) {
+                Text(
+                    text = strings.testExplanation,
+                    fontFamily = interFamily,
+                    color = colors.accent,
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .clickable { showExplanation = true }
+                )
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                OutlinedButton(
-                    onClick = { currentIndex--; showExplanation = false },
-                    enabled = currentIndex > 0
-                ) {
-                    Text(strings.testPrev)
-                }
-
-                OutlinedButton(
-                    onClick = { currentIndex++; showExplanation = false },
-                    enabled = currentIndex < loadedQuestions.lastIndex
-                ) {
-                    Text(strings.testNext)
-                }
+                Text(
+                    text = strings.testPrev,
+                    fontFamily = interFamily,
+                    color = if (currentIndex > 0) colors.textPrimary else colors.textSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier.clickable(enabled = currentIndex > 0) {
+                        currentIndex--
+                        showExplanation = false
+                    }
+                )
+                Text(
+                    text = strings.testNext,
+                    fontFamily = interFamily,
+                    color = if (currentIndex < loadedQuestions.lastIndex) colors.textPrimary else colors.textSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier.clickable(enabled = currentIndex < loadedQuestions.lastIndex) {
+                        currentIndex++
+                        showExplanation = false
+                    }
+                )
             }
 
-            Button(
-                onClick = { showFinishConfirmation = true },
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(colors.accent)
+                    .clickable { showFinishConfirmation = true }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(strings.testFinish)
+                Text(strings.testFinish, fontFamily = interFamily, color = Color.White, fontWeight = FontWeight.Medium)
             }
         }
     }
 
     if (showExplanation) {
-        AlertDialog(
-            onDismissRequest = { showExplanation = false },
-            confirmButton = {
-                Button(onClick = { showExplanation = false }) {
-                    Text(strings.testClose)
+        Dialog(onDismissRequest = { showExplanation = false }) {
+            Card(shape = RoundedCornerShape(16.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(strings.testExplanation, fontFamily = interFamily, fontWeight = FontWeight.Medium, color = colors.textPrimary)
+                    Text(
+                        text = question.explanation,
+                        fontFamily = interFamily,
+                        color = colors.textPrimary,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .align(Alignment.End)
+                            .clickable { showExplanation = false }
+                    ) {
+                        Text(strings.testClose, fontFamily = interFamily, color = colors.accent)
+                    }
                 }
-            },
-            title = { Text(strings.testExplanation) },
-            text = { Text(question.explanation) }
-        )
+            }
+        }
     }
 
     if (showFinishConfirmation) {
@@ -341,14 +430,17 @@ fun TestScreen(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = strings.testFinishDialogTitle,
-                        style = MaterialTheme.typography.titleLarge
+                        fontFamily = interFamily,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.textPrimary
                     )
                     Text(
                         text = if (unansweredCount > 0)
                             strings.testFinishUnansweredText(unansweredCount, loadedQuestions.size)
                         else
                             strings.testFinishAllAnsweredText,
-                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = interFamily,
+                        color = colors.textSecondary,
                         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
                     )
 
@@ -361,19 +453,19 @@ fun TestScreen(
                         items(loadedQuestions.size) { idx ->
                             val answeredOptionId = answers[idx]
                             val squareColor = when {
-                                answeredOptionId == null -> Color.White
-                                mode == TestMode.EXAM -> Color(0xFF2196F3)
-                                answeredOptionId == loadedQuestions[idx].correctOptionId -> Color(0xFF4CAF50)
-                                else -> Color(0xFFF44336)
+                                answeredOptionId == null -> colors.card
+                                mode == TestMode.EXAM -> colors.examBlue
+                                answeredOptionId == loadedQuestions[idx].correctOptionId -> colors.success
+                                else -> colors.error
                             }
-                            val textColor = if (answeredOptionId == null) Color.Black else Color.White
+                            val textColor = if (answeredOptionId == null) colors.textPrimary else Color.White
 
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(squareColor)
-                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+                                    .border(1.dp, colors.border, RoundedCornerShape(6.dp))
                                     .clickable {
                                         currentIndex = idx
                                         showExplanation = false
@@ -381,11 +473,7 @@ fun TestScreen(
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "${idx + 1}",
-                                    color = textColor,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                Text(text = "${idx + 1}", color = textColor, fontFamily = interFamily, fontSize = 12.sp)
                             }
                         }
                     }
@@ -394,21 +482,31 @@ fun TestScreen(
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = { showFinishConfirmation = false },
-                            modifier = Modifier.weight(1f)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(1.dp, colors.border, RoundedCornerShape(14.dp))
+                                .clickable { showFinishConfirmation = false }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(strings.testContinue)
+                            Text(strings.testContinue, fontFamily = interFamily, color = colors.textPrimary)
                         }
-                        Button(
-                            onClick = {
-                                showFinishConfirmation = false
-                                correctCount = computeCorrectCount()
-                                showResult = true
-                            },
-                            modifier = Modifier.weight(1f)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(colors.accent)
+                                .clickable {
+                                    showFinishConfirmation = false
+                                    correctCount = computeCorrectCount()
+                                    showResult = true
+                                }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(strings.testFinishConfirm)
+                            Text(strings.testFinishConfirm, fontFamily = interFamily, color = Color.White)
                         }
                     }
                 }
@@ -419,7 +517,10 @@ fun TestScreen(
 
 @Composable
 fun ResultScreen(correctCount: Int, total: Int, onFinish: () -> Unit) {
+    val colors = LocalAppColors.current
     val strings = LocalStrings.current
+    val interFamily = interFontFamily()
+    val spaceGroteskFamily = spaceGroteskFontFamily()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -434,18 +535,26 @@ fun ResultScreen(correctCount: Int, total: Int, onFinish: () -> Unit) {
 
         Text(
             text = strings.resultOutOf(correctCount, total),
-            style = MaterialTheme.typography.displaySmall
+            fontFamily = spaceGroteskFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 32.sp,
+            color = colors.textPrimary
         )
         Text(
             text = message,
-            style = MaterialTheme.typography.titleLarge,
+            fontFamily = interFamily,
+            color = colors.textSecondary,
             modifier = Modifier.padding(top = 16.dp)
         )
-        Button(
-            onClick = onFinish,
-            modifier = Modifier.padding(top = 32.dp)
+        Box(
+            modifier = Modifier
+                .padding(top = 32.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(colors.accent)
+                .clickable { onFinish() }
+                .padding(horizontal = 24.dp, vertical = 14.dp)
         ) {
-            Text(strings.resultBackToMenu)
+            Text(strings.resultBackToMenu, fontFamily = interFamily, color = Color.White)
         }
     }
 }

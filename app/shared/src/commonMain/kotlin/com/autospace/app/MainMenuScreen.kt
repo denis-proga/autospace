@@ -1,5 +1,8 @@
 package com.autospace.app
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,19 +13,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,8 +34,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 @Composable
@@ -43,7 +48,10 @@ fun MainMenuScreen(
     onTestSelected: (TestInfo, TestMode) -> Unit,
     onOpenStats: () -> Unit
 ) {
+    val colors = LocalAppColors.current
     val strings = LocalStrings.current
+    val interFamily = interFontFamily()
+    val spaceGroteskFamily = spaceGroteskFontFamily()
 
     var selectedMode by remember { mutableStateOf(TestMode.LEARNING) }
     val tests = remember { generateTestList() }
@@ -60,7 +68,6 @@ fun MainMenuScreen(
             val response = ApiClient.getResults(username)
             results = response.results
         } catch (e: Exception) {
-            // тихо игнорируем — карточки просто останутся без цвета
         }
     }
 
@@ -77,7 +84,7 @@ fun MainMenuScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Column(modifier = contentModifier.fillMaxHeight().padding(16.dp)) {
+        Column(modifier = contentModifier.fillMaxHeight().padding(20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -85,79 +92,57 @@ fun MainMenuScreen(
             ) {
                 Text(
                     text = strings.mainMenuAppName,
-                    style = MaterialTheme.typography.headlineMedium
+                    fontFamily = spaceGroteskFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 30.sp,
+                    color = colors.textPrimary
                 )
-                TextButton(onClick = onOpenStats) {
-                    Text(strings.mainMenuStats)
-                }
+                Text(
+                    text = strings.mainMenuStats,
+                    fontFamily = interFamily,
+                    color = colors.textSecondary,
+                    modifier = Modifier.clickable { onOpenStats() }
+                )
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = selectedMode == TestMode.LEARNING,
-                    onClick = { selectedMode = TestMode.LEARNING },
-                    label = { Text(strings.commonLearning) }
-                )
-                FilterChip(
-                    selected = selectedMode == TestMode.EXAM,
-                    onClick = { selectedMode = TestMode.EXAM },
-                    label = { Text(strings.commonExam) }
-                )
-            }
+            PillToggle(
+                options = listOf(TestMode.LEARNING, TestMode.EXAM),
+                selected = selectedMode,
+                labelFor = { if (it == TestMode.LEARNING) strings.commonLearning else strings.commonExam },
+                onSelected = { selectedMode = it },
+                modifier = Modifier.padding(top = 20.dp, bottom = 20.dp)
+            )
 
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 120.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 16.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 items(tests) { test ->
                     val latestResult = latestByTestMode[test.number to selectedMode.name]
-                    val isCompleted = latestResult != null
-
-                    val cardColor = when {
-                        latestResult == null -> null
-                        selectedMode == TestMode.EXAM -> Color(0xFF2196F3)
-                        latestResult.correctCount >= 27 -> Color(0xFF4CAF50)
-                        else -> Color(0xFFF44336)
-                    }
-
-                    Card(
-                        modifier = Modifier
-                            .height(80.dp)
-                            .fillMaxWidth(),
-                        colors = if (cardColor != null)
-                            CardDefaults.cardColors(containerColor = cardColor)
-                        else
-                            CardDefaults.cardColors(),
+                    TestCard(
+                        testNumber = test.number,
+                        result = latestResult,
+                        selectedMode = selectedMode,
                         onClick = {
-                            if (isCompleted) {
+                            if (latestResult != null) {
                                 alreadyCompletedTestNumber = test.number
                             } else {
                                 onTestSelected(test, selectedMode)
                             }
                         }
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text("${strings.commonTestWord} ${test.number}")
-                        }
-                    }
+                    )
                 }
             }
 
             OutlinedButton(
                 onClick = { showResetConfirmation = true },
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(strings.mainMenuResetAll)
+                Text(strings.mainMenuResetAll, fontFamily = interFamily, color = colors.textSecondary)
             }
         }
     }
@@ -176,7 +161,6 @@ fun MainMenuScreen(
                                 ApiClient.resetProgress(ResetProgressRequestDto(username = username))
                                 refreshTrigger++
                             } catch (e: Exception) {
-                                // тихо игнорируем — можно повторить попытку
                             }
                             isResetting = false
                             showResetConfirmation = false
@@ -208,5 +192,57 @@ fun MainMenuScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun TestCard(
+    testNumber: Int,
+    result: TestResultItemDto?,
+    selectedMode: TestMode,
+    onClick: () -> Unit
+) {
+    val colors = LocalAppColors.current
+    val interFamily = interFontFamily()
+    val strings = LocalStrings.current
+
+    val statusColor = when {
+        result == null -> null
+        selectedMode == TestMode.EXAM -> colors.examBlue
+        result.correctCount >= 27 -> colors.success
+        else -> colors.error
+    }
+    val isPassedLearning = result != null && selectedMode == TestMode.LEARNING && result.correctCount >= 27
+    val badgeSymbol = if (selectedMode == TestMode.EXAM || isPassedLearning) "✓" else "✕"
+
+    Box(
+        modifier = Modifier
+            .height(80.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(statusColor?.copy(alpha = 0.12f) ?: colors.card)
+            .border(1.dp, statusColor ?: colors.border, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+    ) {
+        Text(
+            text = "${strings.commonTestWord} $testNumber",
+            fontFamily = interFamily,
+            color = colors.textPrimary,
+            modifier = Modifier.align(Alignment.Center)
+        )
+
+        if (statusColor != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(statusColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = badgeSymbol, color = Color.White, fontSize = 11.sp)
+            }
+        }
     }
 }
