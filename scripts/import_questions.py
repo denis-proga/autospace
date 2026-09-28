@@ -68,6 +68,22 @@ for row in ws.iter_rows(min_row=2, values_only=True):
     cur.execute("SELECT id FROM questions WHERE question_key = %s", (key,))
     existing = cur.fetchone()
 
+
+    duplicate_key = None
+    if not existing:
+        cur.execute(
+            """SELECT question_key FROM questions
+               WHERE test_number = %s AND question_text = %s
+               AND option_a = %s AND option_b = %s AND option_c = %s AND option_d = %s
+               AND question_key != %s""",
+            (test_number, values_by_lang["ru"]["question_text"],
+             values_by_lang["ru"]["option_a"], values_by_lang["ru"]["option_b"],
+             values_by_lang["ru"]["option_c"], values_by_lang["ru"]["option_d"], key)
+        )
+        dup = cur.fetchone()
+        if dup:
+            duplicate_key = dup[0]
+
     columns = ["test_number", "image_filename", "correct_option",
                "question_text", "option_a", "option_b", "option_c", "option_d", "explanation"]
     values = [test_number, filename, correct_option,
@@ -82,10 +98,16 @@ for row in ws.iter_rows(min_row=2, values_only=True):
                    values_by_lang[lang]["option_b"], values_by_lang[lang]["option_c"],
                    values_by_lang[lang]["option_d"], values_by_lang[lang]["explanation"]]
 
+
     if existing:
         set_clause = ", ".join(f"{col} = %s" for col in columns)
         cur.execute(f"UPDATE questions SET {set_clause} WHERE question_key = %s", values + [key])
         updated += 1
+    elif duplicate_key:
+        set_clause = ", ".join(f"{col} = %s" for col in columns)
+        cur.execute(f"UPDATE questions SET {set_clause} WHERE question_key = %s", values + [duplicate_key])
+        updated += 1
+        print(f"Дубль по тексту: {key} → обновлена существующая строка {duplicate_key}")
     else:
         cur.execute(
             f"INSERT INTO questions (question_key, {', '.join(columns)}) VALUES (%s, {', '.join(['%s'] * len(columns))})",
