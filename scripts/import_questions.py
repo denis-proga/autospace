@@ -2,6 +2,7 @@ import sys
 import os
 import openpyxl
 import psycopg2
+import re
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("jdbc:"):
@@ -70,15 +71,10 @@ for row in ws.iter_rows(min_row=2, values_only=True):
 
 
     duplicate_key = None
-    if not existing:
+    if not existing and re.match(r"^question-\d+-[a-z]$", key):
         cur.execute(
-            """SELECT question_key FROM questions
-               WHERE test_number = %s AND question_text = %s
-               AND option_a = %s AND option_b = %s AND option_c = %s AND option_d = %s
-               AND question_key != %s""",
-            (test_number, values_by_lang["ru"]["question_text"],
-             values_by_lang["ru"]["option_a"], values_by_lang["ru"]["option_b"],
-             values_by_lang["ru"]["option_c"], values_by_lang["ru"]["option_d"], key)
+            "SELECT question_key FROM questions WHERE test_number = %s AND question_text = %s AND question_key != %s",
+            (test_number, values_by_lang["ru"]["question_text"], key)
         )
         dup = cur.fetchone()
         if dup:
