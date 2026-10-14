@@ -196,6 +196,16 @@ fun TestScreen(
         return loadedQuestions.indices.count { idx -> answers[idx] == loadedQuestions[idx].correctOptionId }
     }
 
+    // null = не отвечен; иначе цвет статуса. Один источник для полоски и сетки итогов.
+    fun statusColor(idx: Int): Color? {
+        val answeredOptionId = answers[idx] ?: return null
+        return when {
+            mode == TestMode.EXAM -> colors.examBlue
+            answeredOptionId == loadedQuestions[idx].correctOptionId -> colors.success
+            else -> colors.error
+        }
+    }
+
     LaunchedEffect(mode) {
         if (mode == TestMode.EXAM) {
             while (secondsLeft > 0) {
@@ -254,8 +264,12 @@ fun TestScreen(
                 modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
             )
             SegmentedProgressBar(
-                total = loadedQuestions.size,
+                segmentColors = loadedQuestions.indices.map { statusColor(it) },
                 currentIndex = currentIndex,
+                onSegmentClick = { idx ->
+                    currentIndex = idx
+                    showExplanation = false
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -452,12 +466,7 @@ fun TestScreen(
                     ) {
                         items(loadedQuestions.size) { idx ->
                             val answeredOptionId = answers[idx]
-                            val squareColor = when {
-                                answeredOptionId == null -> colors.card
-                                mode == TestMode.EXAM -> colors.examBlue
-                                answeredOptionId == loadedQuestions[idx].correctOptionId -> colors.success
-                                else -> colors.error
-                            }
+                            val squareColor = statusColor(idx) ?: colors.card
                             val textColor = if (answeredOptionId == null) colors.textPrimary else Color.White
 
                             Box(
