@@ -8,6 +8,7 @@ sealed class Screen {
     object Support : Screen()
     object Blocked : Screen()
     object MainMenu : Screen()
+    data class Paywall(val reason: String) : Screen() // DEMO_LIMIT, LICENSE_EXPIRED или MENU
 
     object Stats : Screen()
     data class Test(val test: TestInfo, val mode: TestMode) : Screen()

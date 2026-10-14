@@ -97,7 +97,29 @@ data class AppStrings(
     val resultGood: String,
     val resultBad: String,
     val resultOutOf: (correct: Int, total: Int) -> String,
-    val resultBackToMenu: String
+    val resultBackToMenu: String,
+
+    val errorSessionExpired: String,
+
+    val mainMenuDemoLeft: (left: Int, total: Int) -> String,
+    val mainMenuDaysLeft: (days: Int) -> String,
+    val mainMenuExpired: String,
+    val mainMenuTariffs: String,
+
+    val paywallTitleDemo: String,
+    val paywallTitleExpired: String,
+    val paywallTitleMenu: String,
+    val paywallDescription: String,
+    val paywallDaysLabel: (days: Int) -> String,
+    val paywallHowToPay: String,
+    val paywallNoInstructions: String,
+    val paywallIPaid: String,
+    val paywallClaimSent: String,
+    val paywallClaimPending: String,
+    val paywallClaimFailed: String,
+    val paywallCheckAccess: String,
+    val paywallNotYet: String,
+    val paywallLoadFailed: String
 )
 
 val RussianStrings = AppStrings(
@@ -195,7 +217,29 @@ val RussianStrings = AppStrings(
     resultGood = "Сомнительно, ну окей!",
     resultBad = "Ещё нужно подучить!",
     resultOutOf = { correct, total -> "$correct из $total" },
-    resultBackToMenu = "В меню"
+    resultBackToMenu = "В меню",
+
+    errorSessionExpired = "Сессия истекла. Войдите снова",
+
+    mainMenuDemoLeft = { left, total -> "Бесплатных тестов осталось: $left из $total" },
+    mainMenuDaysLeft = { days -> "Доступ активен: осталось $days дн." },
+    mainMenuExpired = "Доступ закончился",
+    mainMenuTariffs = "Тарифы",
+
+    paywallTitleDemo = "Бесплатные тесты закончились",
+    paywallTitleExpired = "Доступ закончился",
+    paywallTitleMenu = "Тарифы",
+    paywallDescription = "Выберите срок доступа ко всем тестам",
+    paywallDaysLabel = { n -> slavicDays(n, "день", "дня", "дней") },
+    paywallHowToPay = "Как оплатить",
+    paywallNoInstructions = "Реквизиты для оплаты можно получить в поддержке.",
+    paywallIPaid = "Я оплатил(а)",
+    paywallClaimSent = "Заявка отправлена. Доступ откроем после проверки платежа, обычно в течение нескольких часов.",
+    paywallClaimPending = "Заявка уже отправлена. Дождитесь подтверждения.",
+    paywallClaimFailed = "Не удалось отправить заявку. Попробуйте ещё раз.",
+    paywallCheckAccess = "Проверить доступ",
+    paywallNotYet = "Доступ пока не открыт",
+    paywallLoadFailed = "Не удалось загрузить тарифы"
 )
 
 val EnglishStrings = AppStrings(
@@ -293,7 +337,29 @@ val EnglishStrings = AppStrings(
     resultGood = "Iffy, but okay!",
     resultBad = "You still need to study more!",
     resultOutOf = { correct, total -> "$correct out of $total" },
-    resultBackToMenu = "Back to menu"
+    resultBackToMenu = "Back to menu",
+
+    errorSessionExpired = "Session expired. Please log in again",
+
+    mainMenuDemoLeft = { left, total -> "Free tests left: $left of $total" },
+    mainMenuDaysLeft = { days -> if (days == 1) "Access active: 1 day left" else "Access active: $days days left" },
+    mainMenuExpired = "Access has ended",
+    mainMenuTariffs = "Plans",
+
+    paywallTitleDemo = "Free tests are used up",
+    paywallTitleExpired = "Access has ended",
+    paywallTitleMenu = "Plans",
+    paywallDescription = "Choose how long you want access to all tests",
+    paywallDaysLabel = { n -> if (n == 1) "1 day" else "$n days" },
+    paywallHowToPay = "How to pay",
+    paywallNoInstructions = "Ask support for payment details.",
+    paywallIPaid = "I have paid",
+    paywallClaimSent = "Request sent. We will open access after checking the payment, usually within a few hours.",
+    paywallClaimPending = "Your request has already been sent. Please wait for confirmation.",
+    paywallClaimFailed = "Could not send the request. Please try again.",
+    paywallCheckAccess = "Check access",
+    paywallNotYet = "Access is not active yet",
+    paywallLoadFailed = "Could not load plans"
 )
 
 val SpanishStrings = AppStrings(
@@ -391,7 +457,29 @@ val SpanishStrings = AppStrings(
     resultGood = "Dudoso, ¡pero vale!",
     resultBad = "¡Todavía tienes que estudiar más!",
     resultOutOf = { correct, total -> "$correct de $total" },
-    resultBackToMenu = "Al menú"
+    resultBackToMenu = "Al menú",
+
+    errorSessionExpired = "La sesión ha caducado. Inicia sesión de nuevo",
+
+    mainMenuDemoLeft = { left, total -> "Tests gratuitos restantes: $left de $total" },
+    mainMenuDaysLeft = { days -> if (days == 1) "Acceso activo: queda 1 día" else "Acceso activo: quedan $days días" },
+    mainMenuExpired = "El acceso ha terminado",
+    mainMenuTariffs = "Tarifas",
+
+    paywallTitleDemo = "Se han acabado los tests gratuitos",
+    paywallTitleExpired = "El acceso ha terminado",
+    paywallTitleMenu = "Tarifas",
+    paywallDescription = "Elige durante cuánto tiempo quieres acceder a todos los tests",
+    paywallDaysLabel = { n -> if (n == 1) "1 día" else "$n días" },
+    paywallHowToPay = "Cómo pagar",
+    paywallNoInstructions = "Pide los datos de pago al soporte.",
+    paywallIPaid = "He pagado",
+    paywallClaimSent = "Solicitud enviada. Activaremos el acceso tras comprobar el pago, normalmente en unas horas.",
+    paywallClaimPending = "La solicitud ya está enviada. Espera la confirmación.",
+    paywallClaimFailed = "No se pudo enviar la solicitud. Inténtalo de nuevo.",
+    paywallCheckAccess = "Comprobar acceso",
+    paywallNotYet = "El acceso aún no está activo",
+    paywallLoadFailed = "No se pudieron cargar las tarifas"
 )
 
 val GermanStrings = AppStrings(
@@ -489,7 +577,29 @@ val GermanStrings = AppStrings(
     resultGood = "Fraglich, aber okay!",
     resultBad = "Sie müssen noch üben!",
     resultOutOf = { correct, total -> "$correct von $total" },
-    resultBackToMenu = "Zum Menü"
+    resultBackToMenu = "Zum Menü",
+
+    errorSessionExpired = "Sitzung abgelaufen. Bitte melde dich erneut an",
+
+    mainMenuDemoLeft = { left, total -> "Kostenlose Tests übrig: $left von $total" },
+    mainMenuDaysLeft = { days -> if (days == 1) "Zugang aktiv: noch 1 Tag" else "Zugang aktiv: noch $days Tage" },
+    mainMenuExpired = "Der Zugang ist abgelaufen",
+    mainMenuTariffs = "Tarife",
+
+    paywallTitleDemo = "Die kostenlosen Tests sind aufgebraucht",
+    paywallTitleExpired = "Der Zugang ist abgelaufen",
+    paywallTitleMenu = "Tarife",
+    paywallDescription = "Wähle, wie lange du Zugang zu allen Tests haben möchtest",
+    paywallDaysLabel = { n -> if (n == 1) "1 Tag" else "$n Tage" },
+    paywallHowToPay = "So bezahlst du",
+    paywallNoInstructions = "Die Zahlungsdaten erhältst du beim Support.",
+    paywallIPaid = "Ich habe bezahlt",
+    paywallClaimSent = "Anfrage gesendet. Wir schalten den Zugang nach Prüfung der Zahlung frei, meist innerhalb weniger Stunden.",
+    paywallClaimPending = "Die Anfrage wurde bereits gesendet. Bitte warte auf die Bestätigung.",
+    paywallClaimFailed = "Die Anfrage konnte nicht gesendet werden. Bitte versuche es erneut.",
+    paywallCheckAccess = "Zugang prüfen",
+    paywallNotYet = "Der Zugang ist noch nicht aktiv",
+    paywallLoadFailed = "Tarife konnten nicht geladen werden"
 )
 
 val UkrainianStrings = AppStrings(
@@ -587,7 +697,29 @@ val UkrainianStrings = AppStrings(
     resultGood = "Сумнівно, ну гаразд!",
     resultBad = "Ще потрібно підучити!",
     resultOutOf = { correct, total -> "$correct із $total" },
-    resultBackToMenu = "У меню"
+    resultBackToMenu = "У меню",
+
+    errorSessionExpired = "Сесія завершилась. Увійдіть знову",
+
+    mainMenuDemoLeft = { left, total -> "Безкоштовних тестів залишилось: $left з $total" },
+    mainMenuDaysLeft = { days -> "Доступ активний: залишилось $days дн." },
+    mainMenuExpired = "Доступ закінчився",
+    mainMenuTariffs = "Тарифи",
+
+    paywallTitleDemo = "Безкоштовні тести закінчились",
+    paywallTitleExpired = "Доступ закінчився",
+    paywallTitleMenu = "Тарифи",
+    paywallDescription = "Оберіть термін доступу до всіх тестів",
+    paywallDaysLabel = { n -> slavicDays(n, "день", "дні", "днів") },
+    paywallHowToPay = "Як оплатити",
+    paywallNoInstructions = "Реквізити для оплати можна отримати в підтримці.",
+    paywallIPaid = "Я сплатив(ла)",
+    paywallClaimSent = "Заявку надіслано. Ми відкриємо доступ після перевірки платежу, зазвичай протягом кількох годин.",
+    paywallClaimPending = "Заявку вже надіслано. Дочекайтеся підтвердження.",
+    paywallClaimFailed = "Не вдалося надіслати заявку. Спробуйте ще раз.",
+    paywallCheckAccess = "Перевірити доступ",
+    paywallNotYet = "Доступ ще не відкрито",
+    paywallLoadFailed = "Не вдалося завантажити тарифи"
 )
 
 fun stringsFor(language: Language): AppStrings {
@@ -601,3 +733,16 @@ fun stringsFor(language: Language): AppStrings {
 }
 
 val LocalStrings = compositionLocalOf { RussianStrings }
+
+/** "21 день", "3 дні", "5 днів": форма слова для русского и украинского. */
+private fun slavicDays(n: Int, one: String, few: String, many: String): String {
+    val mod100 = n % 100
+    val mod10 = n % 10
+    val word = when {
+        mod100 in 11..14 -> many
+        mod10 == 1 -> one
+        mod10 in 2..4 -> few
+        else -> many
+    }
+    return "$n $word"
+}

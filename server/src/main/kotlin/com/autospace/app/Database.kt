@@ -2,8 +2,11 @@ package com.autospace.app
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 
@@ -14,11 +17,43 @@ object Users : Table("users") {
     val email = varchar("email", 150)
     val username = varchar("username", 100).uniqueIndex()
     val passwordHash = varchar("password_hash", 255)
-    val licenseStatus = varchar("license_status", 20) // PENDING, ACTIVE, EXPIRED, BLOCKED
+    // DEMO, ACTIVE, FRIEND, EXPIRED, BLOCKED  (старый PENDING при запуске превращается в DEMO)
+    val licenseStatus = varchar("license_status", 20)
     val licenseExpiresAt = long("license_expires_at").nullable() // timestamp в миллисекундах
 
     val supportMessagesCount = integer("support_messages_count").default(0)
     val sessionToken = varchar("session_token", 64).nullable()
+
+    // SHA-256 от нормализованной почты: один человек = один набор бесплатных тестов
+    val emailKey = varchar("email_key", 64).nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+/**
+ * Потраченные бесплатные тесты. Привязаны к хешу почты, а не к строке в Users,
+ * поэтому удаление и повторная регистрация слоты не сбрасывают.
+ */
+object DemoSlots : Table("demo_slots") {
+    val id = integer("id").autoIncrement()
+    val emailKey = varchar("email_key", 64)
+    val testNumber = integer("test_number")
+    val claimedAt = long("claimed_at")
+
+    override val primaryKey = PrimaryKey(id)
+    init {
+        uniqueIndex(emailKey, testNumber)
+    }
+}
+
+/** Заявка «я оплатил»: админ проверяет платёж и подтверждает кнопкой в Telegram. */
+object PaymentClaims : Table("payment_claims") {
+    val id = integer("id").autoIncrement()
+    val userId = integer("user_id").references(Users.id)
+    val days = integer("days")
+    val amountEur = integer("amount_eur")
+    val status = varchar("status", 20) // PENDING, APPROVED, DECLINED
+    val createdAt = long("created_at")
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -119,7 +154,19 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress)
-    }
+        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims)
 
+        // Статуса PENDING больше нет: новый пользователь сразу получает демо
+        Users.update({ Users.licenseStatus eq "PENDING" }) {
+            it[Users.licenseStatus] = "DEMO"
+        }
+
+        // Старым пользователям дописываем email_key (хеш нормализованной почты)
+        val withoutKey = Users.selectAll().filter { it[Users.emailKey] == null }
+        withoutKey.forEach { row ->
+            Users.update({ Users.id eq row[Users.id] }) {
+                it[Users.emailKey] = emailKeyOf(row[Users.email])
+            }
+        }
+    }
 }

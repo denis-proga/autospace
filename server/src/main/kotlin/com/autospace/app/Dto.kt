@@ -131,11 +131,56 @@ data class SessionRequest(
     val token: String
 )
 
+/**
+ * Состояние лицензии пользователя.
+ * status: DEMO, ACTIVE, FRIEND, EXPIRED, BLOCKED
+ * expiresAt: конец оплаченного периода (только для ACTIVE), миллисекунды
+ * demoLimit: сколько тестов доступно бесплатно
+ * demoTests: номера тестов, на которые уже потрачены бесплатные слоты
+ */
+@Serializable
+data class LicenseInfo(
+    val status: String,
+    val expiresAt: Long? = null,
+    val demoLimit: Int,
+    val demoTests: List<Int> = emptyList(),
+    val daysLeft: Int? = null
+)
+
+@Serializable
+data class PlanDto(
+    val days: Int,
+    val priceEur: Int
+)
+
+@Serializable
+data class PlansResponse(
+    val plans: List<PlanDto>,
+    val paymentInstructions: String
+)
+
+@Serializable
+data class PaymentClaimRequest(
+    val days: Int
+)
+
 @Serializable
 data class LoginResponse(
     val success: Boolean,
     val message: String,
     val licenseStatus: String? = null,
     val username: String? = null,
-    val token: String? = null
+    val token: String? = null,
+    val license: LicenseInfo? = null
+)
+
+/**
+ * Ошибка с машиночитаемым кодом. Коды:
+ * UNAUTHORIZED (401), BLOCKED, DEMO_LIMIT, LICENSE_EXPIRED, NO_ACCESS, BAD_REQUEST (403/400)
+ */
+@Serializable
+data class ApiError(
+    val success: Boolean,
+    val code: String,
+    val message: String
 )

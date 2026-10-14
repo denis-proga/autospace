@@ -12,6 +12,10 @@ import kotlinx.serialization.Serializable
 import io.ktor.client.request.get
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.http.HttpStatusCode
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
+import kotlinx.serialization.json.Json
 
 @Serializable
 data class RegisterRequestDto(
@@ -130,10 +134,51 @@ data class LoginResponseDto(
     val message: String,
     val licenseStatus: String? = null,
     val username: String? = null,
-    val token: String? = null
+    val token: String? = null,
+    val license: LicenseInfoDto? = null
+)
+
+@Serializable
+data class LicenseInfoDto(
+    val status: String,
+    val expiresAt: Long? = null,
+    val demoLimit: Int,
+    val demoTests: List<Int> = emptyList(),
+    val daysLeft: Int? = null
+)
+
+@Serializable
+data class ApiErrorDto(
+    val success: Boolean = false,
+    val code: String = "",
+    val message: String = ""
+)
+
+@Serializable
+data class PlanItemDto(
+    val days: Int,
+    val priceEur: Int
+)
+
+@Serializable
+data class PlansResponseDto(
+    val plans: List<PlanItemDto>,
+    val paymentInstructions: String = ""
+)
+
+@Serializable
+data class PaymentClaimRequestDto(
+    val days: Int
 )
 
 object ApiClient {
+    /** Токен сессии: выставляется после входа, сбрасывается при выходе. Уходит только на наш сервер. */
+    var authToken: String? = null
+
+    private fun HttpRequestBuilder.auth() {
+        authToken?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+    }
+
     // ВАЖНО: для Android-эмулятора localhost сервера — это 10.0.2.2, а не 127.0.0.1
     // Для Desktop — 127.0.0.1 подходит
     private const val BASE_URL = "https://autospace-hv2r.onrender.com"
@@ -142,7 +187,11 @@ object ApiClient {
         followRedirects = true
 
         install(ContentNegotiation) {
-            json()
+            json(Json {
+                ignoreUnknownKeys = true
+                encodeDefaults = true
+                isLenient = true
+            })
         }
 
         install(HttpTimeout) {
@@ -153,13 +202,14 @@ object ApiClient {
 
     suspend fun saveProgress(request: SaveProgressRequestDto): AuthResponseDto {
         return client.post("$BASE_URL/save-progress") {
+            auth()
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
     }
 
     suspend fun getProgress(username: String, testNumber: Int, mode: String): ProgressResponseDto {
-        return client.get("$BASE_URL/progress/$username/$testNumber/$mode").body()
+        return client.get("$BASE_URL/progress/$username/$testNumber/$mode") { auth() }.body()
     }
 
     suspend fun register(request: RegisterRequestDto): AuthResponseDto {
@@ -206,6 +256,7 @@ object ApiClient {
 
     suspend fun resetProgress(request: ResetProgressRequestDto): AuthResponseDto {
         return client.post("$BASE_URL/reset-progress") {
+            auth()
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
@@ -213,20 +264,53 @@ object ApiClient {
 
     suspend fun saveResult(request: SaveResultRequestDto): AuthResponseDto {
         return client.post("$BASE_URL/results") {
+            auth()
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
     }
 
     suspend fun getResults(username: String): StatsResponseDto {
-        return client.get("$BASE_URL/results/$username").body()
+        return client.get("$BASE_URL/results/$username") { auth() }.body()
     }
 
     suspend fun getQuestions(testNumber: Int, lang: String): QuestionsListResponseDto {
-        val response = client.get("$BASE_URL/questions/$testNumber?lang=$lang")
-        if (response.status == HttpStatusCode.NotFound) {
-            throw QuestionsNotFoundException(testNumber)
+        val response = client.get("$BASE_URL/questions/$testNumber?lang=$lang") { auth() }
+        when (response.status) {
+            HttpStatusCode.NotFound -> throw QuestionsNotFoundException(testNumber)
+            HttpStatusCode.Unauthorized -> throw SessionExpiredException()
+            HttpStatusCode.Forbidden -> {
+                val error = try {
+                    response.body<ApiErrorDto>()
+                } catch (_: Exception) {
+                    null
+                }
+                throw LicenseRequiredException(error?.code ?: "NO_ACCESS")
+            }
+            else -> {}
         }
+        return response.body()
+    }
+
+    suspend fun getLicense(): LicenseInfoDto {
+        val response = client.get("$BASE_URL/license") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun getPlans(): PlansResponseDto {
+        val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun sendPaymentClaim(request: PaymentClaimRequestDto): AuthResponseDto {
+        val response = client.post("$BASE_URL/payment-claim") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }
 

@@ -33,6 +33,11 @@ private fun languageFromCode(code: String?): Language? {
     return Language.entries.find { it.code == code }
 }
 
+/** Куда попадает пользователь после входа. Доступ к тестам сервер проверяет сам при открытии теста. */
+private fun screenForStatus(status: String?): Screen {
+    return if (status == "BLOCKED") Screen.Blocked else Screen.MainMenu
+}
+
 @Composable
 @Preview
 fun App() {
@@ -73,17 +78,12 @@ fun App() {
                 try {
                     val response = ApiClient.checkSession(storedToken)
                     if (response.success) {
+                        ApiClient.authToken = storedToken
                         sessionToken = storedToken
                         loggedInUsername = response.username
                         licenseStatus = response.licenseStatus
                         stack.clear()
-                        stack.add(
-                            when (response.licenseStatus) {
-                                "ACTIVE" -> Screen.MainMenu
-                                "PENDING" -> Screen.Pending
-                                else -> Screen.Blocked
-                            }
-                        )
+                        stack.add(screenForStatus(response.licenseStatus))
                     } else {
                         saveToken(null)
                     }
@@ -125,6 +125,7 @@ fun App() {
 
         fun resetToStart() {
             saveToken(null)
+            ApiClient.authToken = null
             stack.clear()
             stack.add(Screen.LanguageSelection)
             loggedInUsername = null
@@ -234,14 +235,9 @@ fun App() {
                                                             loggedInUsername = username
                                                             sessionToken = response.token
                                                             saveToken(response.token)
+                                                            ApiClient.authToken = response.token
                                                             licenseStatus = response.licenseStatus
-                                                            navigateTo(
-                                                                when (response.licenseStatus) {
-                                                                    "ACTIVE" -> Screen.MainMenu
-                                                                    "PENDING" -> Screen.Pending
-                                                                    else -> Screen.Blocked
-                                                                }
-                                                            )
+                                                            navigateTo(screenForStatus(response.licenseStatus))
                                                         } else {
                                                             errorMessage = response.message
                                                         }
@@ -334,6 +330,7 @@ fun App() {
                                                             loggedInUsername = pendingUsername
                                                             licenseStatus = response.licenseStatus
 
+                                                            var loginOk = false
                                                             try {
                                                                 val loginResponse = ApiClient.login(
                                                                     LoginRequestDto(pendingUsername!!, pendingPassword!!)
@@ -341,13 +338,16 @@ fun App() {
                                                                 if (loginResponse.success) {
                                                                     sessionToken = loginResponse.token
                                                                     saveToken(loginResponse.token)
+                                                                    ApiClient.authToken = loginResponse.token
+                                                                    loginOk = true
                                                                 }
                                                             } catch (e: Exception) {
                                                                 // тихо игнорируем
                                                             }
                                                             pendingPassword = null
 
-                                                            navigateReplacingCurrent(Screen.Pending)
+                                                            if (!loginOk) loggedInUsername = null
+                                                            navigateReplacingCurrent(if (loginOk) Screen.MainMenu else Screen.Auth)
                                                         } else {
                                                             verifyErrorMessage = response.message
                                                         }
@@ -462,6 +462,7 @@ fun App() {
                                         MainMenuScreen(
                                             username = loggedInUsername ?: "",
                                             refreshKey = menuRefreshTrigger,
+                                            onOpenPaywall = { navigateTo(Screen.Paywall("MENU")) },
                                             onTestSelected = { test, mode ->
                                                 navigateTo(Screen.Test(test, mode))
                                             },
@@ -481,6 +482,14 @@ fun App() {
                                         )
                                     }
 
+                                    is Screen.Paywall -> {
+                                        PaywallScreen(
+                                            reason = screen.reason,
+                                            onAccessGranted = { navigateBack() },
+                                            onSessionExpired = { resetToStart() }
+                                        )
+                                    }
+
                                     is Screen.Stats -> {
                                         StatsScreen(
                                             isLoading = isLoadingStats,
@@ -496,6 +505,11 @@ fun App() {
                                             username = loggedInUsername ?: "",
                                             scope = scope,
                                             onFinish = { navigateBack() },
+                                            onLicenseRequired = { code ->
+                                                if (code == "BLOCKED") navigateReplacingCurrent(Screen.Blocked)
+                                                else navigateReplacingCurrent(Screen.Paywall(code))
+                                            },
+                                            onSessionExpired = { resetToStart() },
                                             onSaveResult = { correctCount, total ->
                                                 scope.launch {
                                                     try {

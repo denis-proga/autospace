@@ -46,7 +46,8 @@ fun MainMenuScreen(
     username: String,
     refreshKey: Int,
     onTestSelected: (TestInfo, TestMode) -> Unit,
-    onOpenStats: () -> Unit
+    onOpenStats: () -> Unit,
+    onOpenPaywall: () -> Unit
 ) {
     val colors = LocalAppColors.current
     val strings = LocalStrings.current
@@ -62,11 +63,17 @@ fun MainMenuScreen(
     var isResetting by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var alreadyCompletedTestNumber by remember { mutableStateOf<Int?>(null) }
+    var license by remember { mutableStateOf<LicenseInfoDto?>(null) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
             val response = ApiClient.getResults(username)
             results = response.results
+        } catch (e: Exception) {
+        }
+
+        try {
+            license = ApiClient.getLicense()
         } catch (e: Exception) {
         }
     }
@@ -105,6 +112,8 @@ fun MainMenuScreen(
                 )
             }
 
+            LicenseStatusLine(license = license, onClick = onOpenPaywall)
+
             PillToggle(
                 options = listOf(TestMode.LEARNING, TestMode.EXAM),
                 selected = selectedMode,
@@ -127,8 +136,14 @@ fun MainMenuScreen(
                         result = latestResult,
                         selectedMode = selectedMode,
                         onClick = {
+                            val lic = license
+                            // бесплатные слоты кончились: сразу показываем тарифы (сервер всё равно проверит сам)
+                            val demoExhausted = lic != null && lic.status == "DEMO" &&
+                                    test.number !in lic.demoTests && lic.demoTests.size >= lic.demoLimit
                             if (latestResult != null) {
                                 alreadyCompletedTestNumber = test.number
+                            } else if (demoExhausted) {
+                                onOpenPaywall()
                             } else {
                                 onTestSelected(test, selectedMode)
                             }
@@ -244,5 +259,43 @@ private fun TestCard(
                 Text(text = badgeSymbol, color = Color.White, fontSize = 11.sp)
             }
         }
+    }
+}
+
+@Composable
+private fun LicenseStatusLine(license: LicenseInfoDto?, onClick: () -> Unit) {
+    if (license == null) return
+
+    val colors = LocalAppColors.current
+    val strings = LocalStrings.current
+    val interFamily = interFontFamily()
+
+    val text: String = when (license.status) {
+        "DEMO" -> strings.mainMenuDemoLeft(
+            (license.demoLimit - license.demoTests.size).coerceAtLeast(0),
+            license.demoLimit
+        )
+        "ACTIVE" -> strings.mainMenuDaysLeft(license.daysLeft ?: 0)
+        "EXPIRED" -> strings.mainMenuExpired
+        else -> return
+    }
+    val isWarning = license.status == "EXPIRED"
+
+    Row(
+        modifier = Modifier.padding(top = 12.dp).clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            fontFamily = interFamily,
+            fontSize = 13.sp,
+            color = if (isWarning) colors.error else colors.textSecondary
+        )
+        Text(
+            text = "  ·  ${strings.mainMenuTariffs}",
+            fontFamily = interFamily,
+            fontSize = 13.sp,
+            color = colors.accent
+        )
     }
 }

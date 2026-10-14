@@ -82,22 +82,23 @@ data class TelegramUpdatesResponse(
 )
 
 object TelegramService {
+    /** Уведомление о новом пользователе. Одобрение больше не нужно: он сразу получает демо. */
     suspend fun notifyNewRegistration(userId: Int, firstName: String, lastName: String, username: String, email: String) {
         if (botToken.isEmpty() || chatId.isEmpty()) {
             println("Telegram not configured, skipping notification")
             return
         }
 
-        val text = "🆕 New registration\n\n" +
-                "Name: $firstName $lastName\n" +
+        val text = "🆕 Новая регистрация (демо)\n\n" +
+                "Имя: $firstName $lastName\n" +
                 "Username: $username\n" +
-                "Email: $email"
+                "Email: $email\n" +
+                "ID: #$userId"
 
         val keyboard = InlineKeyboardMarkup(
             inline_keyboard = listOf(
                 listOf(
-                    InlineKeyboardButton(text = "✅ Approve", callback_data = "approve:$userId"),
-                    InlineKeyboardButton(text = "❌ Reject", callback_data = "reject:$userId")
+                    InlineKeyboardButton(text = "🚫 Заблокировать", callback_data = "block:$userId")
                 )
             )
         )
@@ -133,6 +134,36 @@ object TelegramService {
         }
     }
 
+    /** Заявка «я оплатил»: админ проверяет, что деньги пришли, и нажимает кнопку. */
+    suspend fun notifyPaymentClaim(claimId: Int, userId: Int, username: String, email: String, days: Int, amountEur: Int) {
+        if (botToken.isEmpty() || chatId.isEmpty()) {
+            println("Telegram not configured, skipping notification")
+            return
+        }
+
+        val text = "💶 Заявка на оплату #$claimId\n\n" +
+                "Пользователь: #$userId $username\n" +
+                "Email: $email\n" +
+                "Тариф: $days дн. за $amountEur €\n\n" +
+                "Проверь, что платёж пришёл, и подтверди."
+
+        val keyboard = InlineKeyboardMarkup(
+            inline_keyboard = listOf(
+                listOf(
+                    InlineKeyboardButton(text = "✅ Выдать $days дн.", callback_data = "pay_ok:$claimId"),
+                    InlineKeyboardButton(text = "❌ Отклонить", callback_data = "pay_no:$claimId")
+                )
+            )
+        )
+
+        val message = TelegramMessage(chat_id = chatId, text = text, reply_markup = keyboard)
+
+        telegramClient.post("https://api.telegram.org/bot$botToken/sendMessage") {
+            contentType(ContentType.Application.Json)
+            setBody(Json.encodeToString(TelegramMessage.serializer(), message))
+        }
+    }
+
     suspend fun sendPlainMessage(text: String) {
         if (botToken.isEmpty() || chatId.isEmpty()) return
 
@@ -144,6 +175,16 @@ object TelegramService {
         }
     }
 }
+
+private const val HELP_TEXT = "Команды:\n" +
+        "/users — список пользователей\n" +
+        "/grant <id> <дней> — выдать или продлить доступ\n" +
+        "/friend <id> — доступ без срока (друзья)\n" +
+        "/revoke <id> — снять доступ\n" +
+        "/block <id> — заблокировать\n" +
+        "/unblock <id> — разблокировать\n" +
+        "/demo_reset <id> — вернуть бесплатные тесты\n" +
+        "/delete <id> — удалить пользователя"
 
 suspend fun startTelegramListener() {
     if (botToken.isEmpty() || chatId.isEmpty()) {
@@ -171,34 +212,76 @@ suspend fun startTelegramListener() {
                     if (incoming.from?.id?.toString() != chatId) continue
                     val text = incoming.text?.trim() ?: continue
 
-                    when {
-                        text == "/users" -> {
+                    val parts = text.split(Regex("\\s+"))
+                    val command = parts[0].substringBefore("@")
+                    val arg1 = parts.getOrNull(1)?.toIntOrNull()
+                    val arg2 = parts.getOrNull(2)?.toIntOrNull()
+
+                    when (command) {
+                        "/users" -> {
                             val users = UserRepository.listUsers()
-                            val reply = if (users.isEmpty()) {
-                                "Пользователей пока нет"
+                            if (users.isEmpty()) {
+                                TelegramService.sendPlainMessage("Пользователей пока нет")
                             } else {
-                                "👥 Пользователи:\n\n" + users.joinToString("\n")
+                                // у Telegram лимит на длину сообщения, поэтому шлём частями
+                                users.chunked(40).forEachIndexed { index, chunk ->
+                                    val header = if (index == 0) "👥 Пользователи:\n\n" else ""
+                                    TelegramService.sendPlainMessage(header + chunk.joinToString("\n"))
+                                }
                             }
-                            TelegramService.sendPlainMessage(reply)
                         }
 
-                        text.startsWith("/delete") -> {
-                            val id = text.removePrefix("/delete").trim().toIntOrNull()
-                            if (id == null) {
-                                TelegramService.sendPlainMessage("Укажите id: /delete 5")
+                        "/grant" -> {
+                            if (arg1 == null || arg2 == null || arg2 !in 1..3650) {
+                                TelegramService.sendPlainMessage("Формат: /grant <id> <дней>, например /grant 5 30")
                             } else {
-                                val deleted = UserRepository.deleteUser(id)
+                                TelegramService.sendPlainMessage(UserRepository.grantDays(arg1, arg2))
+                            }
+                        }
+
+                        "/friend" -> {
+                            if (arg1 == null) TelegramService.sendPlainMessage("Укажите id: /friend 5")
+                            else TelegramService.sendPlainMessage(UserRepository.setFriend(arg1))
+                        }
+
+                        "/revoke" -> {
+                            if (arg1 == null) TelegramService.sendPlainMessage("Укажите id: /revoke 5")
+                            else TelegramService.sendPlainMessage(UserRepository.revokeAccess(arg1))
+                        }
+
+                        "/block" -> {
+                            if (arg1 == null) {
+                                TelegramService.sendPlainMessage("Укажите id: /block 5")
+                            } else {
+                                val done = UserRepository.blockUser(arg1)
                                 TelegramService.sendPlainMessage(
-                                    if (deleted) "Пользователь #$id удалён" else "Пользователь #$id не найден"
+                                    if (done) "🚫 Пользователь #$arg1 заблокирован" else "Пользователь #$arg1 не найден"
                                 )
                             }
                         }
 
-                        text == "/help" || text == "/start" -> {
-                            TelegramService.sendPlainMessage(
-                                "Команды:\n/users — список пользователей\n/delete <id> — удалить пользователя"
-                            )
+                        "/unblock" -> {
+                            if (arg1 == null) TelegramService.sendPlainMessage("Укажите id: /unblock 5")
+                            else TelegramService.sendPlainMessage(UserRepository.unblockUser(arg1))
                         }
+
+                        "/demo_reset" -> {
+                            if (arg1 == null) TelegramService.sendPlainMessage("Укажите id: /demo_reset 5")
+                            else TelegramService.sendPlainMessage(UserRepository.resetDemo(arg1))
+                        }
+
+                        "/delete" -> {
+                            if (arg1 == null) {
+                                TelegramService.sendPlainMessage("Укажите id: /delete 5")
+                            } else {
+                                val deleted = UserRepository.deleteUser(arg1)
+                                TelegramService.sendPlainMessage(
+                                    if (deleted) "Пользователь #$arg1 удалён" else "Пользователь #$arg1 не найден"
+                                )
+                            }
+                        }
+
+                        "/help", "/start" -> TelegramService.sendPlainMessage(HELP_TEXT)
                     }
                     continue
                 }
@@ -211,16 +294,25 @@ suspend fun startTelegramListener() {
                 if (parts.size != 2) continue
 
                 val action = parts[0]
-                val userId = parts[1].toIntOrNull() ?: continue
+                val targetId = parts[1].toIntOrNull() ?: continue
 
                 when (action) {
-                    "approve" -> {
-                        UserRepository.approveUser(userId)
-                        answerCallback(callback.id, "User approved ✅")
+                    // "reject" оставлен для старых сообщений с кнопками
+                    "block", "reject" -> {
+                        UserRepository.blockUser(targetId)
+                        answerCallback(callback.id, "Пользователь заблокирован 🚫")
                     }
-                    "reject" -> {
-                        UserRepository.blockUser(userId)
-                        answerCallback(callback.id, "User rejected ❌")
+                    "pay_ok" -> {
+                        val result = UserRepository.approveClaim(targetId)
+                        answerCallback(callback.id, result.take(190))
+                        TelegramService.sendPlainMessage(result)
+                    }
+                    "pay_no" -> {
+                        val result = UserRepository.declineClaim(targetId)
+                        answerCallback(callback.id, result.take(190))
+                    }
+                    "approve" -> {
+                        answerCallback(callback.id, "Одобрение больше не нужно. Доступ: /grant <id> <дней>")
                     }
                 }
             }

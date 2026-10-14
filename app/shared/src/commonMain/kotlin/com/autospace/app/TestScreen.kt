@@ -68,7 +68,9 @@ fun TestScreen(
     username: String,
     scope: CoroutineScope,
     onFinish: () -> Unit,
-    onSaveResult: (correctCount: Int, total: Int) -> Unit
+    onSaveResult: (correctCount: Int, total: Int) -> Unit,
+    onLicenseRequired: (code: String) -> Unit = {},
+    onSessionExpired: () -> Unit = {}
 ) {
     val colors = LocalAppColors.current
     val strings = LocalStrings.current
@@ -93,7 +95,11 @@ fun TestScreen(
             val response = ApiClient.getQuestions(test.number, language)
             questions = response.questions.map { it.toQuestion() }
         } catch (e: Exception) {
-            loadErrorMessage = friendlyServerErrorMessage(e, strings)
+            when (e) {
+                is LicenseRequiredException -> onLicenseRequired(e.code)
+                is SessionExpiredException -> onSessionExpired()
+                else -> loadErrorMessage = friendlyServerErrorMessage(e, strings)
+            }
         }
     }
 
