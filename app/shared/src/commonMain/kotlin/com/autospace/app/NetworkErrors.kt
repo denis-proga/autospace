@@ -5,6 +5,9 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 
 class QuestionsNotFoundException(val testNumber: Int) : Exception("No questions for test $testNumber")
 
+/** Сетевой сбой (нет связи, блокировка CORS и т.п.). */
+class NetworkException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
 /** Токен недействителен: сессия истекла или вход выполнен на другом устройстве. */
 class SessionExpiredException : Exception("Session expired")
 

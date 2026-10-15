@@ -16,6 +16,8 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import kotlinx.serialization.json.Json
+import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.plugin
 
 @Serializable
 data class RegisterRequestDto(
@@ -210,6 +212,18 @@ object ApiClient {
         install(HttpTimeout) {
             requestTimeoutMillis = 90_000
             connectTimeoutMillis = 30_000
+        }
+    }
+
+    init {
+        // В браузере сетевой сбой приходит как kotlin.Error, а не Exception, и мимо catch (e: Exception)
+        // молча убивает корутину. Превращаем его в обычное исключение, чтобы экраны показали ошибку.
+        client.plugin(HttpSend).intercept { request ->
+            try {
+                execute(request)
+            } catch (e: Error) {
+                throw NetworkException(e.message ?: "Network error", e)
+            }
         }
     }
 
