@@ -184,3 +184,16 @@ data class ApiError(
     val code: String,
     val message: String
 )
+
+@Serializable
+data class ForgotPasswordRequest(
+    val identifier: String,
+    val language: String = "ru"
+)
+
+@Serializable
+data class ResetPasswordRequest(
+    val identifier: String,
+    val code: String,
+    val newPassword: String
+)

@@ -3,6 +3,7 @@ package com.autospace.app
 sealed class Screen {
     object LanguageSelection : Screen()
     object Auth : Screen()
+    object ForgotPassword : Screen()
     data class VerifyCode(val email: String) : Screen()
     object Pending : Screen()
     object Support : Screen()

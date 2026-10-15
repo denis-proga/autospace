@@ -475,6 +475,55 @@ fun Application.module() {
             }
         }
 
+        // Восстановление пароля, шаг 1. Ответ всегда одинаковый, чтобы нельзя было проверять, зарегистрирована ли почта.
+        // Письмо уходит в фоне, чтобы разница во времени ответа тоже ничего не выдавала.
+        post("/forgot-password") {
+            if (!RateLimiter.allow("forgot:${call.clientIp()}", 10, 60 * 60_000L)) {
+                call.respond(AuthResponse(success = false, message = "TOO_MANY_REQUESTS"))
+                return@post
+            }
+
+            val request = call.receive<ForgotPasswordRequest>()
+            val target = PasswordResets.findUser(request.identifier.trim())
+
+            if (target != null) {
+                val code = PasswordResets.issueCode(target.id)
+                if (code != null) {
+                    val email = target.email
+                    val language = request.language
+                    call.application.launch {
+                        EmailService.sendPasswordResetCode(email, code, language)
+                    }
+                }
+            }
+
+            call.respond(AuthResponse(success = true, message = "If the account exists, a code has been sent"))
+        }
+
+        // Восстановление пароля, шаг 2: код из письма и новый пароль
+        post("/reset-password") {
+            if (!RateLimiter.allow("reset:${call.clientIp()}", 20, 10 * 60_000L)) {
+                call.respond(AuthResponse(success = false, message = "TOO_MANY_REQUESTS"))
+                return@post
+            }
+
+            val request = call.receive<ResetPasswordRequest>()
+
+            if (request.newPassword.length < 6 || request.newPassword.length > 100) {
+                call.respond(AuthResponse(success = false, message = "PASSWORD_INVALID"))
+                return@post
+            }
+
+            val target = PasswordResets.findUser(request.identifier.trim())
+            if (target == null || !PasswordResets.verify(target.id, request.code)) {
+                call.respond(AuthResponse(success = false, message = "INVALID_CODE"))
+                return@post
+            }
+
+            PasswordResets.setNewPassword(target.id, hashPassword(request.newPassword))
+            call.respond(AuthResponse(success = true, message = "Password changed"))
+        }
+
         // Тарифы и реквизиты. Реквизиты берутся из переменной окружения PAYMENT_INSTRUCTIONS (в Render), без обновления приложения
         get("/plans") {
             call.requireUser() ?: return@get

@@ -36,6 +36,16 @@ private fun emailTemplateFor(language: String, code: String): EmailTemplate {
     }
 }
 
+private fun resetTemplateFor(language: String, code: String): EmailTemplate {
+    return when (language) {
+        "en" -> EmailTemplate("AutoSpace — password reset code", "Your password reset code: $code\n\nThe code is valid for 15 minutes. If you didn't request a reset, just ignore this email — your password will stay the same.")
+        "es" -> EmailTemplate("AutoSpace — código para restablecer la contraseña", "Tu código para restablecer la contraseña: $code\n\nEl código es válido durante 15 minutos. Si no lo has solicitado, ignora este correo: tu contraseña no cambiará.")
+        "de" -> EmailTemplate("AutoSpace — Code zum Zurücksetzen des Passworts", "Ihr Code zum Zurücksetzen des Passworts: $code\n\nDer Code ist 15 Minuten gültig. Wenn Sie das nicht angefordert haben, ignorieren Sie diese E-Mail — Ihr Passwort bleibt unverändert.")
+        "uk" -> EmailTemplate("AutoSpace — код для скидання пароля", "Ваш код для скидання пароля: $code\n\nКод дійсний 15 хвилин. Якщо ви не робили цей запит, просто проігноруйте лист — пароль не зміниться.")
+        else -> EmailTemplate("AutoSpace — код для сброса пароля", "Ваш код для сброса пароля: $code\n\nКод действует 15 минут. Если вы не запрашивали сброс, просто проигнорируйте это письмо — пароль не изменится.")
+    }
+}
+
 object EmailService {
     private val client = HttpClient {
         install(ContentNegotiation) { json() }
@@ -46,12 +56,18 @@ object EmailService {
     }
 
     suspend fun sendVerificationCode(toEmail: String, code: String, language: String = "ru"): Boolean {
+        return send(toEmail, emailTemplateFor(language, code), code)
+    }
+
+    suspend fun sendPasswordResetCode(toEmail: String, code: String, language: String = "ru"): Boolean {
+        return send(toEmail, resetTemplateFor(language, code), code)
+    }
+
+    private suspend fun send(toEmail: String, template: EmailTemplate, codeForLog: String): Boolean {
         if (resendApiKey.isEmpty()) {
-            println("Resend not configured, skipping email send. Code would have been: $code")
+            println("Resend not configured, skipping email send. Code would have been: $codeForLog")
             return false
         }
-
-        val template = emailTemplateFor(language, code)
 
         return try {
             val response = client.post("https://api.resend.com/emails") {

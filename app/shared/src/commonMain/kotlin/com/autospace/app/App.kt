@@ -225,6 +225,7 @@ fun App() {
                                             errorMessage = errorMessage,
                                             isLoading = isAuthenticating,
                                             onModeChanged = { errorMessage = null },
+                                            onForgotPassword = { navigateTo(Screen.ForgotPassword) },
                                             onLogin = { username, password ->
                                                 scope.launch {
                                                     isAuthenticating = true
@@ -279,6 +280,13 @@ fun App() {
                                                     isAuthenticating = false
                                                 }
                                             }
+                                        )
+                                    }
+
+                                    is Screen.ForgotPassword -> {
+                                        ForgotPasswordScreen(
+                                            language = selectedLanguage.code,
+                                            onBackToLogin = { navigateBack() }
                                         )
                                     }
 

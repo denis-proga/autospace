@@ -171,6 +171,19 @@ data class PaymentClaimRequestDto(
     val days: Int
 )
 
+@Serializable
+data class ForgotPasswordRequestDto(
+    val identifier: String,
+    val language: String
+)
+
+@Serializable
+data class ResetPasswordRequestDto(
+    val identifier: String,
+    val code: String,
+    val newPassword: String
+)
+
 object ApiClient {
     /** Токен сессии: выставляется после входа, сбрасывается при выходе. Уходит только на наш сервер. */
     var authToken: String? = null
@@ -290,6 +303,20 @@ object ApiClient {
             else -> {}
         }
         return response.body()
+    }
+
+    suspend fun forgotPassword(request: ForgotPasswordRequestDto): AuthResponseDto {
+        return client.post("$BASE_URL/forgot-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    suspend fun resetPassword(request: ResetPasswordRequestDto): AuthResponseDto {
+        return client.post("$BASE_URL/reset-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
     }
 
     suspend fun getLicense(): LicenseInfoDto {

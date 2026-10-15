@@ -36,7 +36,8 @@ fun AuthScreen(
     isLoading: Boolean,
     onModeChanged: () -> Unit,
     onLogin: (username: String, password: String) -> Unit,
-    onRegister: (User) -> Unit
+    onRegister: (User) -> Unit,
+    onForgotPassword: () -> Unit
 ) {
     val strings = LocalStrings.current
 
@@ -174,6 +175,16 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { submit() }
             )
+
+            if (isLoginMode) {
+                TextButton(
+                    onClick = onForgotPassword,
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.authForgotPassword)
+                }
+            }
 
             if (showWakingHint) {
                 Text(

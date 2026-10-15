@@ -119,7 +119,24 @@ data class AppStrings(
     val paywallClaimFailed: String,
     val paywallCheckAccess: String,
     val paywallNotYet: String,
-    val paywallLoadFailed: String
+    val paywallLoadFailed: String,
+
+    val authForgotPassword: String,
+    val forgotTitle: String,
+    val forgotDescription: String,
+    val forgotIdentifierLabel: String,
+    val forgotSendCode: String,
+    val forgotCodeSent: String,
+    val forgotCodeLabel: String,
+    val forgotNewPasswordLabel: String,
+    val forgotChangePassword: String,
+    val forgotPasswordTooShort: String,
+    val forgotInvalidCode: String,
+    val forgotTooManyRequests: String,
+    val forgotSuccess: String,
+    val forgotBackToLogin: String,
+    val forgotResendIn: (seconds: Int) -> String,
+    val forgotResend: String
 )
 
 val RussianStrings = AppStrings(
@@ -239,7 +256,24 @@ val RussianStrings = AppStrings(
     paywallClaimFailed = "Не удалось отправить заявку. Попробуйте ещё раз.",
     paywallCheckAccess = "Проверить доступ",
     paywallNotYet = "Доступ пока не открыт",
-    paywallLoadFailed = "Не удалось загрузить тарифы"
+    paywallLoadFailed = "Не удалось загрузить тарифы",
+
+    authForgotPassword = "Забыли пароль?",
+    forgotTitle = "Восстановление пароля",
+    forgotDescription = "Введите логин или почту, и мы отправим код для сброса пароля",
+    forgotIdentifierLabel = "Логин или почта",
+    forgotSendCode = "Отправить код",
+    forgotCodeSent = "Если такой аккаунт существует, мы отправили код на его почту",
+    forgotCodeLabel = "Код из письма",
+    forgotNewPasswordLabel = "Новый пароль",
+    forgotChangePassword = "Сменить пароль",
+    forgotPasswordTooShort = "Пароль должен быть не короче 6 символов",
+    forgotInvalidCode = "Неверный или просроченный код",
+    forgotTooManyRequests = "Слишком много попыток. Попробуйте позже",
+    forgotSuccess = "Пароль изменён. Теперь можно войти",
+    forgotBackToLogin = "Войти",
+    forgotResendIn = { s -> "Отправить код повторно через $s с" },
+    forgotResend = "Отправить код ещё раз"
 )
 
 val EnglishStrings = AppStrings(
@@ -359,7 +393,24 @@ val EnglishStrings = AppStrings(
     paywallClaimFailed = "Could not send the request. Please try again.",
     paywallCheckAccess = "Check access",
     paywallNotYet = "Access is not active yet",
-    paywallLoadFailed = "Could not load plans"
+    paywallLoadFailed = "Could not load plans",
+
+    authForgotPassword = "Forgot password?",
+    forgotTitle = "Password recovery",
+    forgotDescription = "Enter your username or email and we will send a code to reset your password",
+    forgotIdentifierLabel = "Username or email",
+    forgotSendCode = "Send code",
+    forgotCodeSent = "If this account exists, we have sent a code to its email",
+    forgotCodeLabel = "Code from the email",
+    forgotNewPasswordLabel = "New password",
+    forgotChangePassword = "Change password",
+    forgotPasswordTooShort = "Password must be at least 6 characters",
+    forgotInvalidCode = "Invalid or expired code",
+    forgotTooManyRequests = "Too many attempts. Please try again later",
+    forgotSuccess = "Password changed. You can now log in",
+    forgotBackToLogin = "Log in",
+    forgotResendIn = { s -> "Resend code in $s s" },
+    forgotResend = "Send code again"
 )
 
 val SpanishStrings = AppStrings(
@@ -479,7 +530,24 @@ val SpanishStrings = AppStrings(
     paywallClaimFailed = "No se pudo enviar la solicitud. Inténtalo de nuevo.",
     paywallCheckAccess = "Comprobar acceso",
     paywallNotYet = "El acceso aún no está activo",
-    paywallLoadFailed = "No se pudieron cargar las tarifas"
+    paywallLoadFailed = "No se pudieron cargar las tarifas",
+
+    authForgotPassword = "¿Olvidaste tu contraseña?",
+    forgotTitle = "Recuperar contraseña",
+    forgotDescription = "Introduce tu usuario o correo y te enviaremos un código para restablecer la contraseña",
+    forgotIdentifierLabel = "Usuario o correo",
+    forgotSendCode = "Enviar código",
+    forgotCodeSent = "Si la cuenta existe, hemos enviado un código a su correo",
+    forgotCodeLabel = "Código del correo",
+    forgotNewPasswordLabel = "Nueva contraseña",
+    forgotChangePassword = "Cambiar contraseña",
+    forgotPasswordTooShort = "La contraseña debe tener al menos 6 caracteres",
+    forgotInvalidCode = "Código incorrecto o caducado",
+    forgotTooManyRequests = "Demasiados intentos. Inténtalo más tarde",
+    forgotSuccess = "Contraseña cambiada. Ya puedes iniciar sesión",
+    forgotBackToLogin = "Iniciar sesión",
+    forgotResendIn = { s -> "Reenviar código en $s s" },
+    forgotResend = "Enviar el código otra vez"
 )
 
 val GermanStrings = AppStrings(
@@ -599,7 +667,24 @@ val GermanStrings = AppStrings(
     paywallClaimFailed = "Die Anfrage konnte nicht gesendet werden. Bitte versuche es erneut.",
     paywallCheckAccess = "Zugang prüfen",
     paywallNotYet = "Der Zugang ist noch nicht aktiv",
-    paywallLoadFailed = "Tarife konnten nicht geladen werden"
+    paywallLoadFailed = "Tarife konnten nicht geladen werden",
+
+    authForgotPassword = "Passwort vergessen?",
+    forgotTitle = "Passwort wiederherstellen",
+    forgotDescription = "Gib deinen Benutzernamen oder deine E-Mail ein, und wir senden dir einen Code zum Zurücksetzen des Passworts",
+    forgotIdentifierLabel = "Benutzername oder E-Mail",
+    forgotSendCode = "Code senden",
+    forgotCodeSent = "Falls das Konto existiert, haben wir einen Code an die zugehörige E-Mail gesendet",
+    forgotCodeLabel = "Code aus der E-Mail",
+    forgotNewPasswordLabel = "Neues Passwort",
+    forgotChangePassword = "Passwort ändern",
+    forgotPasswordTooShort = "Das Passwort muss mindestens 6 Zeichen lang sein",
+    forgotInvalidCode = "Ungültiger oder abgelaufener Code",
+    forgotTooManyRequests = "Zu viele Versuche. Bitte versuche es später erneut",
+    forgotSuccess = "Passwort geändert. Du kannst dich jetzt anmelden",
+    forgotBackToLogin = "Anmelden",
+    forgotResendIn = { s -> "Code erneut senden in $s s" },
+    forgotResend = "Code erneut senden"
 )
 
 val UkrainianStrings = AppStrings(
@@ -719,7 +804,24 @@ val UkrainianStrings = AppStrings(
     paywallClaimFailed = "Не вдалося надіслати заявку. Спробуйте ще раз.",
     paywallCheckAccess = "Перевірити доступ",
     paywallNotYet = "Доступ ще не відкрито",
-    paywallLoadFailed = "Не вдалося завантажити тарифи"
+    paywallLoadFailed = "Не вдалося завантажити тарифи",
+
+    authForgotPassword = "Забули пароль?",
+    forgotTitle = "Відновлення пароля",
+    forgotDescription = "Введіть логін або пошту, і ми надішлемо код для скидання пароля",
+    forgotIdentifierLabel = "Логін або пошта",
+    forgotSendCode = "Надіслати код",
+    forgotCodeSent = "Якщо такий акаунт існує, ми надіслали код на його пошту",
+    forgotCodeLabel = "Код із листа",
+    forgotNewPasswordLabel = "Новий пароль",
+    forgotChangePassword = "Змінити пароль",
+    forgotPasswordTooShort = "Пароль має бути не коротшим за 6 символів",
+    forgotInvalidCode = "Невірний або прострочений код",
+    forgotTooManyRequests = "Забагато спроб. Спробуйте пізніше",
+    forgotSuccess = "Пароль змінено. Тепер можна увійти",
+    forgotBackToLogin = "Увійти",
+    forgotResendIn = { s -> "Надіслати код повторно через $s с" },
+    forgotResend = "Надіслати код ще раз"
 )
 
 fun stringsFor(language: Language): AppStrings {
