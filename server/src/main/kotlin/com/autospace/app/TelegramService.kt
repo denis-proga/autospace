@@ -78,7 +78,7 @@ data class TelegramUpdate(
 @Serializable
 data class TelegramUpdatesResponse(
     val ok: Boolean,
-    val result: List<TelegramUpdate>
+    val result: List<TelegramUpdate> = emptyList()
 )
 
 object TelegramService {
@@ -204,6 +204,14 @@ suspend fun startTelegramListener() {
             val json = Json { ignoreUnknownKeys = true }
             val updates = json.decodeFromString(TelegramUpdatesResponse.serializer(), response)
 
+            // Telegram отвечает ok=false, например при деплое, когда старый и новый экземпляр сервера
+            // одновременно опрашивают бота (409 Conflict). Ждём и пробуем снова, а не крутим цикл без паузы.
+            if (!updates.ok) {
+                println("Telegram getUpdates not ok: $response")
+                kotlinx.coroutines.delay(5000)
+                continue
+            }
+
             for (update in updates.result) {
                 offset = update.update_id + 1
 
@@ -318,6 +326,7 @@ suspend fun startTelegramListener() {
             }
         } catch (e: Exception) {
             println("Telegram listener error: ${e.message}")
+            kotlinx.coroutines.delay(5000)
         }
     }
 }
