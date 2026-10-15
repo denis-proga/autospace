@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -10,6 +11,11 @@ plugins {
 
 kotlin {
     jvm()
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
     
     android {
        namespace = "com.autospace.app.app.shared"
@@ -50,10 +56,13 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.ktor.clientCore)
             implementation(libs.ktor.clientContentNegotiation)
-            implementation(libs.ktor.serializationKotlinxJson)
+            implementation(libs.ktor.serializationKotlinxJsonMultiplatform)
         }
         jvmMain.dependencies {
             implementation(libs.ktor.clientCio)
+        }
+        wasmJsMain.dependencies {
+            implementation(libs.ktor.clientJs)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

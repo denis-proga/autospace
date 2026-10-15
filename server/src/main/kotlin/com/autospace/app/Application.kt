@@ -1,11 +1,14 @@
 package com.autospace.app
 
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -134,6 +137,29 @@ private fun buildQuestion(row: ResultRow, lang: String): QuestionResponse {
 }
 
 fun Application.module() {
+    // Браузерной версии нужно явное разрешение на запросы к API.
+    // Адреса сайта задаются переменной ALLOWED_ORIGINS в Render, через запятую.
+    install(CORS) {
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Options)
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.Authorization)
+
+        readSetting("ALLOWED_ORIGINS")
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { origin ->
+                val scheme = origin.substringBefore("://", "https")
+                val host = origin.substringAfter("://").trimEnd('/')
+                allowHost(host, schemes = listOf(scheme))
+            }
+
+        // локальная разработка веб-версии: dev-сервер Gradle слушает порт 8080
+        allowHost("localhost:8080", schemes = listOf("http"))
+    }
+
     install(ContentNegotiation) {
         json()
     }

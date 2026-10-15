@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.sqlite.jdbc)
     implementation(libs.ktor.serverContentNegotiation)
+    implementation(libs.ktor.serverCors)
     implementation(libs.ktor.serializationKotlinxJson)
     implementation(libs.dotenv)
     implementation(libs.ktor.clientCore)
