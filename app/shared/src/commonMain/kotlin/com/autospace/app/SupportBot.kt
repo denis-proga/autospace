@@ -14,6 +14,7 @@ internal sealed interface BotAction {
     object Helped : BotAction
     object NotHelped : BotAction
     object Escalate : BotAction
+    object Decline : BotAction
     object Tariffs : BotAction
     object Topics : BotAction
 }
@@ -86,4 +87,13 @@ internal fun ticketCategoryFor(topic: BotTopic?): String = when (topic) {
     BotTopic.QUESTION_ERROR -> "QUESTION_ERROR"
     BotTopic.ACCESS, BotTopic.PASSWORD -> "TECH"
     else -> "OTHER"
+}
+
+/** Тема обращения из первых слов вопроса пользователя (до ~40 символов, по границе слова). */
+internal fun subjectFromQuestion(question: String): String {
+    val q = question.trim().replace(Regex("\\s+"), " ")
+    if (q.length <= 40) return q
+    val cut = q.take(40)
+    val space = cut.lastIndexOf(' ')
+    return (if (space >= 15) cut.take(space) else cut).trimEnd('.', ',', ';', ':', '!', '?') + "…"
 }

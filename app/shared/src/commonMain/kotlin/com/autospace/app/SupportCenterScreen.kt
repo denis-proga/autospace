@@ -112,6 +112,13 @@ fun SupportCenterScreen(
         listOf(BotTopic.NO_CODE, BotTopic.PASSWORD, BotTopic.ACCESS, BotTopic.PAYMENT, BotTopic.PROGRESS, BotTopic.LANGUAGE, BotTopic.QUESTION_ERROR)
             .map { BotChoice(topicLabel(it, strings), BotAction.Topic(it)) }
 
+    val decision = botDecisionStrings(strings)
+
+    fun escalateChoices(): List<BotChoice> = listOf(
+        BotChoice(decision.yesWrite, BotAction.Escalate, highlight = true),
+        BotChoice(decision.noPickTopic, BotAction.Decline)
+    )
+
     LaunchedEffect(Unit) {
         choices = topicChoices()
         serverOk = ApiClient.isServerReachable()
@@ -154,7 +161,7 @@ fun SupportCenterScreen(
 
     fun openForm() {
         category = ticketCategoryFor(lastTopic)
-        subject = lastTopic?.let { topicLabel(it, strings) } ?: ""
+        subject = lastTopic?.let { topicLabel(it, strings) } ?: subjectFromQuestion(lastQuestion)
         message = lastQuestion
         subjectError = false
         messageError = false
@@ -184,14 +191,9 @@ fun SupportCenterScreen(
         when (action) {
             is BotAction.Topic -> answerTopic(action.topic)
             BotAction.Helped -> botSays(strings.botReplyHelped, topicChoices())
-            BotAction.NotHelped -> botSays(
-                strings.botReplyNotHelped,
-                listOf(
-                    BotChoice(strings.botAskDeveloper, BotAction.Escalate, highlight = true),
-                    BotChoice(strings.botOtherTopic, BotAction.Topics)
-                )
-            )
+            BotAction.NotHelped -> botSays(strings.botReplyNotHelped, escalateChoices())
             BotAction.Escalate -> openForm()
+            BotAction.Decline -> botSays(decision.declined, topicChoices())
             BotAction.Tariffs -> {
                 choices = topicChoices()
                 onOpenPaywall()
@@ -212,10 +214,7 @@ fun SupportCenterScreen(
             answerTopic(topic)
         } else {
             lastTopic = null
-            botSays(
-                strings.botNoMatch,
-                listOf(BotChoice(strings.botAskDeveloper, BotAction.Escalate, highlight = true)) + topicChoices()
-            )
+            botSays(strings.botNoMatch, escalateChoices())
         }
     }
 
