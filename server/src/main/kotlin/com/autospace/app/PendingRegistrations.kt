@@ -107,4 +107,22 @@ object PendingRegistrations {
     fun findByUsername(username: String): PendingRegistration? {
         return store[username]
     }
+
+    /** Ищет неподтверждённую регистрацию по логину или по почте. */
+    fun findByIdentifier(identifier: String): PendingRegistration? {
+        val key = identifier.trim()
+        store[key]?.let { return it }
+        if (key.contains("@")) {
+            val wanted = emailKeyOf(key)
+            return store.values.firstOrNull { emailKeyOf(it.email) == wanted }
+        }
+        return null
+    }
+}
+
+/** j***@gmail.com: адрес для показа пользователю без раскрытия полностью. */
+fun maskEmail(email: String): String {
+    val at = email.indexOf('@')
+    if (at <= 0) return "***"
+    return email.substring(0, 1) + "***" + email.substring(at)
 }

@@ -176,6 +176,10 @@ fun App() {
                         val interFamily = interFontFamily()
 
                         Column {
+                            // на экране выбора языка верхней панели нет: там полноэкранная сцена
+                            if (currentScreen != Screen.LanguageSelection && currentScreen != Screen.Auth &&
+                                currentScreen !is Screen.VerifyCode && currentScreen != Screen.ForgotPassword &&
+                                currentScreen != Screen.MainMenu && currentScreen != Screen.SupportCenter) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -211,6 +215,7 @@ fun App() {
                                     }
                                 )
                             }
+                            }
 
                             Box(modifier = Modifier.padding(0.dp)) {
                                 when (val screen = currentScreen) {
@@ -230,6 +235,8 @@ fun App() {
                                             isLoading = isAuthenticating,
                                             onModeChanged = { errorMessage = null },
                                             onForgotPassword = { navigateTo(Screen.ForgotPassword) },
+                                            language = selectedLanguage,
+                                            onChangeLanguage = { navigateBack() },
                                             onLogin = { username, password ->
                                                 scope.launch {
                                                     isAuthenticating = true
@@ -237,14 +244,25 @@ fun App() {
                                                     try {
                                                         val response = ApiClient.login(LoginRequestDto(username, password))
                                                         if (response.success) {
-                                                            loggedInUsername = username
+                                                            loggedInUsername = response.username ?: username
                                                             sessionToken = response.token
                                                             saveToken(response.token)
                                                             ApiClient.authToken = response.token
                                                             licenseStatus = response.licenseStatus
                                                             navigateTo(screenForStatus(response.licenseStatus))
                                                         } else {
-                                                            errorMessage = response.message
+                                                            if (response.message.startsWith("EMAIL_NOT_VERIFIED:")) {
+                                                                val parts = response.message.split(":", limit = 3)
+                                                                pendingUsername = parts.getOrNull(1) ?: username
+                                                                pendingPassword = password
+                                                                resendCooldownSeconds = 0
+                                                                isResendingCode = false
+                                                                resendExhausted = false
+                                                                resendCount = 0
+                                                                navigateTo(Screen.VerifyCode(parts.getOrNull(2) ?: ""))
+                                                            } else {
+                                                                errorMessage = localizedAuthError(response.message, strings)
+                                                            }
                                                         }
                                                     } catch (e: Exception) {
                                                         errorMessage = friendlyServerErrorMessage(e, strings)
@@ -276,7 +294,7 @@ fun App() {
                                                             resendCount = 0
                                                             navigateTo(Screen.VerifyCode(user.email))
                                                         } else {
-                                                            errorMessage = response.message
+                                                            errorMessage = localizedAuthError(response.message, strings)
                                                         }
                                                     } catch (e: Exception) {
                                                         errorMessage = friendlyServerErrorMessage(e, strings)
@@ -290,7 +308,25 @@ fun App() {
                                     is Screen.ForgotPassword -> {
                                         ForgotPasswordScreen(
                                             language = selectedLanguage.code,
-                                            onBackToLogin = { navigateBack() }
+                                            onBackToLogin = { navigateBack() },
+                                            onContinueRegistration = { username, maskedEmail ->
+                                                pendingUsername = username
+                                                pendingPassword = null
+                                                resendCooldownSeconds = 0
+                                                isResendingCode = false
+                                                resendExhausted = false
+                                                resendCount = 0
+                                                navigateReplacingCurrent(Screen.VerifyCode(maskedEmail))
+                                            }
+                                        )
+                                    }
+
+                                    is Screen.SupportCenter -> {
+                                        SupportCenterScreen(
+                                            language = selectedLanguage.code,
+                                            onBack = { navigateBack() },
+                                            onOpenPaywall = { navigateTo(Screen.Paywall("MENU")) },
+                                            onSessionExpired = { resetToStart() }
                                         )
                                     }
 
@@ -361,7 +397,7 @@ fun App() {
                                                             if (!loginOk) loggedInUsername = null
                                                             navigateReplacingCurrent(if (loginOk) Screen.MainMenu else Screen.Auth)
                                                         } else {
-                                                            verifyErrorMessage = response.message
+                                                            verifyErrorMessage = localizedAuthError(response.message, strings)
                                                         }
                                                     } catch (e: Exception) {
                                                         verifyErrorMessage = friendlyServerErrorMessage(e, strings)
@@ -400,7 +436,8 @@ fun App() {
                                                     isResendingCode = false
                                                 }
                                             },
-                                            onContactSupport = { navigateTo(Screen.Support) }
+                                            onContactSupport = { navigateTo(Screen.Support) },
+                                            onBack = { navigateBack() }
                                         )
                                     }
 
@@ -475,6 +512,13 @@ fun App() {
                                             username = loggedInUsername ?: "",
                                             refreshKey = menuRefreshTrigger,
                                             onOpenPaywall = { navigateTo(Screen.Paywall("MENU")) },
+                                            language = selectedLanguage,
+                                            onLanguageChange = { newLanguage ->
+                                                selectedLanguage = newLanguage
+                                                saveLanguageCode(newLanguage.code)
+                                            },
+                                            onLogout = { resetToStart() },
+                                            onOpenSupport = { navigateTo(Screen.SupportCenter) },
                                             onTestSelected = { test, mode ->
                                                 navigateTo(Screen.Test(test, mode))
                                             },
@@ -522,7 +566,7 @@ fun App() {
                                                 else navigateReplacingCurrent(Screen.Paywall(code))
                                             },
                                             onSessionExpired = { resetToStart() },
-                                            onSaveResult = { correctCount, total ->
+                                            onSaveResult = { _, _, answersPayload ->
                                                 scope.launch {
                                                     try {
                                                         ApiClient.saveResult(
@@ -530,8 +574,7 @@ fun App() {
                                                                 username = loggedInUsername ?: "",
                                                                 testNumber = screen.test.number,
                                                                 mode = screen.mode.name,
-                                                                correctCount = correctCount,
-                                                                totalQuestions = total
+                                                                answers = answersPayload
                                                             )
                                                         )
                                                         menuRefreshTrigger++

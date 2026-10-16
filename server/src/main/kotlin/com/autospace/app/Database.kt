@@ -58,6 +58,43 @@ object PaymentClaims : Table("payment_claims") {
     override val primaryKey = PrimaryKey(id)
 }
 
+/**
+ * Ответы пользователя по каждому вопросу: основа для режима «работа над ошибками»,
+ * статистики по вопросам и наград. Одна строка на пару (пользователь, вопрос).
+ */
+object UserAnswers : Table("user_answers") {
+    val id = integer("id").autoIncrement()
+    val userId = integer("user_id")
+    val questionId = integer("question_id")
+    val attempts = integer("attempts")
+    val wrongCount = integer("wrong_count")
+    val lastCorrect = bool("last_correct")
+    val updatedAt = long("updated_at")
+
+    override val primaryKey = PrimaryKey(id)
+    init {
+        uniqueIndex(userId, questionId)
+    }
+}
+
+/** Обращения в поддержку. Статусы: OPEN, IN_PROGRESS, ANSWERED, CLOSED. */
+object SupportTickets : Table("support_tickets") {
+    val id = integer("id").autoIncrement()
+    val userId = integer("user_id").references(Users.id)
+    val category = varchar("category", 30)
+    val subject = varchar("subject", 150)
+    val message = text("message")
+    val contactEmail = varchar("contact_email", 150).nullable()
+    val language = varchar("language", 5)
+    val status = varchar("status", 20)
+    val createdAt = long("created_at")
+    val updatedAt = long("updated_at")
+    val lastReply = text("last_reply").nullable()
+    val lastReplyAt = long("last_reply_at").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 object TestResults : Table("test_results") {
     val id = integer("id").autoIncrement()
     val userId = integer("user_id").references(Users.id)
@@ -154,7 +191,7 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims)
+        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims, UserAnswers, SupportTickets)
 
         // Статуса PENDING больше нет: новый пользователь сразу получает демо
         Users.update({ Users.licenseStatus eq "PENDING" }) {

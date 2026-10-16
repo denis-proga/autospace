@@ -4,6 +4,7 @@ sealed class Screen {
     object LanguageSelection : Screen()
     object Auth : Screen()
     object ForgotPassword : Screen()
+    object SupportCenter : Screen()
     data class VerifyCode(val email: String) : Screen()
     object Pending : Screen()
     object Support : Screen()

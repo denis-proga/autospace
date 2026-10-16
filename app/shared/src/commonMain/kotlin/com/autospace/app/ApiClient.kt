@@ -61,8 +61,16 @@ data class SaveResultRequestDto(
     val username: String,
     val testNumber: Int,
     val mode: String,
-    val correctCount: Int,
-    val totalQuestions: Int
+    // "idВопроса:номерВарианта" через запятую. Результат считает сервер
+    val answers: String
+)
+
+@Serializable
+data class SaveResultResponseDto(
+    val success: Boolean,
+    val message: String = "",
+    val correctCount: Int = 0,
+    val totalQuestions: Int = 0
 )
 
 @Serializable
@@ -171,6 +179,42 @@ data class PlansResponseDto(
 @Serializable
 data class PaymentClaimRequestDto(
     val days: Int
+)
+
+@Serializable
+data class TicketCreateRequestDto(
+    val category: String,
+    val subject: String,
+    val message: String,
+    val contactEmail: String? = null,
+    val language: String = "ru"
+)
+
+@Serializable
+data class TicketDto(
+    val id: Int,
+    val category: String,
+    val subject: String,
+    val message: String,
+    val status: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastReply: String? = null,
+    val lastReplyAt: Long? = null
+)
+
+@Serializable
+data class TicketsResponseDto(
+    val tickets: List<TicketDto>,
+    val remaining: Int
+)
+
+@Serializable
+data class TicketCreateResponseDto(
+    val success: Boolean,
+    val code: String = "",
+    val ticketId: Int = 0,
+    val remaining: Int = 0
 )
 
 @Serializable
@@ -289,7 +333,7 @@ object ApiClient {
         }.body()
     }
 
-    suspend fun saveResult(request: SaveResultRequestDto): AuthResponseDto {
+    suspend fun saveResult(request: SaveResultRequestDto): SaveResultResponseDto {
         return client.post("$BASE_URL/results") {
             auth()
             contentType(ContentType.Application.Json)
@@ -331,6 +375,31 @@ object ApiClient {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
+    }
+
+    suspend fun getTickets(): TicketsResponseDto {
+        val response = client.get("$BASE_URL/tickets") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun createTicket(request: TicketCreateRequestDto): TicketCreateResponseDto {
+        val response = client.post("$BASE_URL/tickets") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    /** Отвечает ли сервер: для значка «Все системы работают» на странице поддержки. */
+    suspend fun isServerReachable(): Boolean {
+        return try {
+            client.get(BASE_URL).status.value in 200..299
+        } catch (e: Throwable) {
+            false
+        }
     }
 
     suspend fun getLicense(): LicenseInfoDto {

@@ -164,6 +164,38 @@ object TelegramService {
         }
     }
 
+    /** Новое обращение в поддержку: с кнопками «Взять в работу» и «Закрыть». */
+    suspend fun notifyTicket(ticketId: Int, userId: Int, username: String, category: String, subject: String, message: String, replyEmail: String) {
+        if (botToken.isEmpty() || chatId.isEmpty()) {
+            println("Telegram not configured, skipping notification")
+            return
+        }
+
+        val text = "🎫 Обращение #$ticketId\n\n" +
+                "Тема: $subject\n" +
+                "Категория: $category\n" +
+                "От: #$userId $username\n" +
+                "Почта для ответа: $replyEmail\n\n" +
+                "$message\n\n" +
+                "Ответить: /reply $ticketId текст ответа"
+
+        val keyboard = InlineKeyboardMarkup(
+            inline_keyboard = listOf(
+                listOf(
+                    InlineKeyboardButton(text = "🛠 Взять в работу", callback_data = "tk_work:$ticketId"),
+                    InlineKeyboardButton(text = "✔ Закрыть", callback_data = "tk_close:$ticketId")
+                )
+            )
+        )
+
+        val telegramMessage = TelegramMessage(chat_id = chatId, text = text, reply_markup = keyboard)
+
+        telegramClient.post("https://api.telegram.org/bot$botToken/sendMessage") {
+            contentType(ContentType.Application.Json)
+            setBody(Json.encodeToString(TelegramMessage.serializer(), telegramMessage))
+        }
+    }
+
     suspend fun sendPlainMessage(text: String) {
         if (botToken.isEmpty() || chatId.isEmpty()) return
 
@@ -184,7 +216,10 @@ private const val HELP_TEXT = "Команды:\n" +
         "/block <id> — заблокировать\n" +
         "/unblock <id> — разблокировать\n" +
         "/demo_reset <id> — вернуть бесплатные тесты\n" +
-        "/delete <id> — удалить пользователя"
+        "/delete <id> — удалить пользователя\n" +
+        "/tickets — открытые обращения\n" +
+        "/reply <id> <текст> — ответить на обращение\n" +
+        "/close <id> — закрыть обращение"
 
 suspend fun startTelegramListener() {
     if (botToken.isEmpty() || chatId.isEmpty()) {
@@ -289,6 +324,49 @@ suspend fun startTelegramListener() {
                             }
                         }
 
+                        "/tickets" -> {
+                            val open = TicketRepository.listOpen()
+                            if (open.isEmpty()) {
+                                TelegramService.sendPlainMessage("Открытых обращений нет")
+                            } else {
+                                open.chunked(40).forEachIndexed { index, chunk ->
+                                    val header = if (index == 0) "🎫 Открытые обращения:\n\n" else ""
+                                    TelegramService.sendPlainMessage(header + chunk.joinToString("\n"))
+                                }
+                            }
+                        }
+
+                        "/reply" -> {
+                            val body = text.substringAfter(" ", "").trim()
+                            val ticketId = body.substringBefore(" ").toIntOrNull()
+                            val replyText = body.substringAfter(" ", "").trim()
+                            if (ticketId == null || replyText.isEmpty()) {
+                                TelegramService.sendPlainMessage("Формат: /reply <id> <текст ответа>")
+                            } else {
+                                val info = TicketRepository.reply(ticketId, replyText)
+                                if (info == null) {
+                                    TelegramService.sendPlainMessage("Обращение #$ticketId не найдено")
+                                } else {
+                                    val target = info.replyEmail
+                                    val emailed = if (!target.isNullOrBlank()) {
+                                        EmailService.sendTicketReply(target, ticketId, info.subject, replyText, info.language)
+                                    } else false
+                                    TelegramService.sendPlainMessage(
+                                        "✅ Ответ на #$ticketId сохранён (${info.username}). Письмо: " + if (emailed) "отправлено" else "не отправлено"
+                                    )
+                                }
+                            }
+                        }
+
+                        "/close" -> {
+                            if (arg1 == null) {
+                                TelegramService.sendPlainMessage("Укажите номер: /close 12")
+                            } else {
+                                val ok = TicketRepository.setStatus(arg1, "CLOSED")
+                                TelegramService.sendPlainMessage(if (ok) "Обращение #$arg1 закрыто" else "Обращение #$arg1 не найдено")
+                            }
+                        }
+
                         "/help", "/start" -> TelegramService.sendPlainMessage(HELP_TEXT)
                     }
                     continue
@@ -314,6 +392,14 @@ suspend fun startTelegramListener() {
                         val result = UserRepository.approveClaim(targetId)
                         answerCallback(callback.id, result.take(190))
                         TelegramService.sendPlainMessage(result)
+                    }
+                    "tk_work" -> {
+                        val ok = TicketRepository.setStatus(targetId, "IN_PROGRESS")
+                        answerCallback(callback.id, if (ok) "Обращение #$targetId в работе" else "Не найдено")
+                    }
+                    "tk_close" -> {
+                        val ok = TicketRepository.setStatus(targetId, "CLOSED")
+                        answerCallback(callback.id, if (ok) "Обращение #$targetId закрыто" else "Не найдено")
                     }
                     "pay_no" -> {
                         val result = UserRepository.declineClaim(targetId)

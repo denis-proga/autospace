@@ -347,6 +347,7 @@ fun Application.module() {
             transaction {
                 TestResults.deleteWhere { TestResults.userId eq user.id }
                 TestProgress.deleteWhere { TestProgress.userId eq user.id }
+                UserAnswers.deleteWhere { UserAnswers.userId eq user.id }
             }
 
             call.respond(AuthResponse(success = true, message = "Progress reset"))
@@ -360,10 +361,27 @@ fun Application.module() {
 
             val request = call.receive<LoginRequest>()
 
-            val user = transaction {
+            // вход возможен и по логину, и по почте
+            val resolvedId = PasswordResets.findUser(request.username.trim())?.id
+            val user = if (resolvedId == null) null else transaction {
                 Users.select(Users.id, Users.username, Users.passwordHash, Users.licenseStatus)
-                    .where { Users.username eq request.username }
+                    .where { Users.id eq resolvedId }
                     .singleOrNull()
+            }
+
+            // Регистрация начата, но почта не подтверждена: аккаунта ещё нет, поэтому отправляем человека
+            // подтверждать почту (только если пароль совпал с тем, что он указал при регистрации).
+            if (user == null) {
+                val pending = PendingRegistrations.findByIdentifier(request.username)
+                if (pending != null && pending.password == request.password) {
+                    call.respond(
+                        LoginResponse(
+                            success = false,
+                            message = "EMAIL_NOT_VERIFIED:${pending.username}:${maskEmail(pending.email)}"
+                        )
+                    )
+                    return@post
+                }
             }
 
             if (user == null || !verifyPassword(request.password, user[Users.passwordHash])) {
@@ -523,6 +541,20 @@ fun Application.module() {
                 }
             }
 
+            // Если это неподтверждённая регистрация, восстанавливать нечего: подсказываем завершить регистрацию
+            if (target == null) {
+                val pending = PendingRegistrations.findByIdentifier(request.identifier)
+                if (pending != null) {
+                    call.respond(
+                        AuthResponse(
+                            success = false,
+                            message = "REGISTRATION_PENDING:${pending.username}:${maskEmail(pending.email)}"
+                        )
+                    )
+                    return@post
+                }
+            }
+
             call.respond(AuthResponse(success = true, message = "If the account exists, a code has been sent"))
         }
 
@@ -593,6 +625,68 @@ fun Application.module() {
             call.respond(AuthResponse(success = true, message = "Claim sent"))
         }
 
+        // Мои обращения и сколько ещё можно открыть
+        get("/tickets") {
+            val user = call.requireUser() ?: return@get
+            val remaining = (TicketRepository.MAX_ACTIVE - TicketRepository.activeCount(user.id)).coerceAtLeast(0)
+            call.respond(TicketsResponse(tickets = TicketRepository.listFor(user.id), remaining = remaining))
+        }
+
+        // Новое обращение. Уведомление уходит админу в Telegram
+        post("/tickets") {
+            val user = call.requireUser() ?: return@post
+            val request = call.receive<TicketCreateRequest>()
+
+            if (!RateLimiter.allow("ticket:${user.id}", 5, 60 * 60_000L)) {
+                call.respond(TicketCreateResponse(success = false, code = "TOO_MANY_REQUESTS"))
+                return@post
+            }
+
+            val subject = request.subject.trim()
+            val message = request.message.trim()
+            val email = request.contactEmail?.trim()?.takeIf { it.isNotEmpty() }
+            val language = if (request.language in TicketRepository.LANGUAGES) request.language else "ru"
+
+            val valid = request.category in TicketRepository.CATEGORIES &&
+                    subject.length in 3..150 &&
+                    message.length in 20..1000 &&
+                    (email == null || (email.length <= 150 && email.contains("@")))
+            if (!valid) {
+                call.respond(TicketCreateResponse(success = false, code = "BAD_REQUEST"))
+                return@post
+            }
+
+            val active = TicketRepository.activeCount(user.id)
+            if (active >= TicketRepository.MAX_ACTIVE) {
+                call.respond(TicketCreateResponse(success = false, code = "TOO_MANY_TICKETS"))
+                return@post
+            }
+
+            val ticketId = TicketRepository.create(user.id, request.category, subject, message, email, language)
+
+            try {
+                TelegramService.notifyTicket(
+                    ticketId = ticketId,
+                    userId = user.id,
+                    username = user.username,
+                    category = request.category,
+                    subject = subject,
+                    message = message,
+                    replyEmail = email ?: user.email
+                )
+            } catch (e: Exception) {
+                println("Telegram ticket notify failed: ${e.message}")
+            }
+
+            call.respond(
+                TicketCreateResponse(
+                    success = true,
+                    ticketId = ticketId,
+                    remaining = (TicketRepository.MAX_ACTIVE - active - 1).coerceAtLeast(0)
+                )
+            )
+        }
+
         // Поддержка остаётся без токена: писать должны уметь и те, кто не может войти
         post("/support") {
             val request = call.receive<SupportRequest>()
@@ -657,32 +751,39 @@ fun Application.module() {
             val request = call.receive<SaveResultRequest>()
 
             val validMode = request.mode == "LEARNING" || request.mode == "EXAM"
-            val validCounts = request.totalQuestions in 1..200 && request.correctCount in 0..request.totalQuestions
-            if (request.username != user.username || !validMode || !validCounts) {
+            if (request.username != user.username || !validMode || request.answers.length > 2000) {
                 call.respond(HttpStatusCode.BadRequest, ApiError(success = false, code = "BAD_REQUEST", message = "Invalid result data"))
                 return@post
             }
 
-            val saved = ResultsRepository.saveResult(
-                username = request.username,
-                testNumber = request.testNumber,
-                mode = request.mode,
-                correctCount = request.correctCount,
-                totalQuestions = request.totalQuestions
-            )
-
-            if (saved) {
-                transaction {
-                    TestProgress.deleteWhere {
-                        (TestProgress.userId eq user.id) and
-                                (TestProgress.testNumber eq request.testNumber) and
-                                (TestProgress.mode eq request.mode)
-                    }
-                }
-                call.respond(AuthResponse(success = true, message = "Result saved"))
-            } else {
-                call.respond(AuthResponse(success = false, message = "User not found"))
+            if (!LicenseService.canSaveProgress(user, request.testNumber)) {
+                call.respond(HttpStatusCode.Forbidden, ApiError(success = false, code = "NO_ACCESS", message = "No access to this test"))
+                return@post
             }
+
+            // Результат считает сервер по ответам: присланное клиентом число правильных больше не принимается
+            val outcome = ResultsRepository.saveScoredResult(user.id, request.testNumber, request.mode, request.answers)
+            if (outcome == null) {
+                call.respond(HttpStatusCode.NotFound, ApiError(success = false, code = "NOT_FOUND", message = "Test not found"))
+                return@post
+            }
+
+            transaction {
+                TestProgress.deleteWhere {
+                    (TestProgress.userId eq user.id) and
+                            (TestProgress.testNumber eq request.testNumber) and
+                            (TestProgress.mode eq request.mode)
+                }
+            }
+
+            call.respond(
+                SaveResultResponse(
+                    success = true,
+                    message = "Result saved",
+                    correctCount = outcome.correctCount,
+                    totalQuestions = outcome.totalQuestions
+                )
+            )
         }
 
         get("/results/{username}") {

@@ -196,6 +196,8 @@ object UserRepository {
     fun deleteUser(userId: Int): Boolean {
         return transaction<Boolean> {
             PaymentClaims.deleteWhere { PaymentClaims.userId eq userId }
+            UserAnswers.deleteWhere { UserAnswers.userId eq userId }
+            SupportTickets.deleteWhere { SupportTickets.userId eq userId }
             TestResults.deleteWhere { TestResults.userId eq userId }
             TestProgress.deleteWhere { TestProgress.userId eq userId }
             Users.deleteWhere { Users.id eq userId } > 0

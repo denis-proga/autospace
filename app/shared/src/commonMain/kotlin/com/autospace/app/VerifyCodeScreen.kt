@@ -2,17 +2,14 @@ package com.autospace.app
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +19,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
+/** Срок жизни кода на сервере (PendingRegistrations): 15 минут. */
+private const val CODE_LIFETIME_SECONDS = 15 * 60
+
+/**
+ * Подтверждение почты после регистрации, два экрана подряд:
+ * 1) «Проверьте почту»: письмо, адрес и повторная отправка;
+ * 2) «Введите код подтверждения»: шесть ячеек, таймер действия кода.
+ * onBack возвращает ко входу (неподтверждённая регистрация остаётся на сервере до истечения срока).
+ */
 @Composable
 fun VerifyCodeScreen(
     email: String,
@@ -33,91 +41,170 @@ fun VerifyCodeScreen(
     isResending: Boolean,
     resendExhausted: Boolean,
     onResendCode: () -> Unit,
-    onContactSupport: () -> Unit
+    onContactSupport: () -> Unit,
+    onBack: () -> Unit
 ) {
     val strings = LocalStrings.current
+    val interFamily = interFontFamily()
+
+    var step by remember { mutableStateOf(1) }
     var code by remember { mutableStateOf("") }
 
-    val windowSizeClass = LocalWindowSizeClass.current
-    val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
-        Modifier.fillMaxWidth()
-    } else {
-        Modifier.fillMaxWidth().widthIn(max = 400.dp)
+    // таймер действия кода: после повторной отправки (кулдаун снова ~60 с) начинается заново
+    var secondsLeft by remember { mutableStateOf(CODE_LIFETIME_SECONDS) }
+    LaunchedEffect(secondsLeft) {
+        if (secondsLeft > 0) {
+            delay(1000)
+            secondsLeft--
+        }
+    }
+    LaunchedEffect(resendCooldownSeconds) {
+        if (resendCooldownSeconds >= 59) secondsLeft = CODE_LIFETIME_SECONDS
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    val timeText = "${(secondsLeft / 60).toString().padStart(2, '0')}:${(secondsLeft % 60).toString().padStart(2, '0')}"
+    val canVerify = code.length == 6 && secondsLeft > 0
+
+    FormScaffold(
+        onBack = if (step == 2) ({ step = 1 }) else null,
+        framed = false
     ) {
         Column(
-            modifier = contentModifier,
+            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = strings.verifyTitle,
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = strings.verifyDescription(email),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp)
-            )
-
-            OutlinedTextField(
-                value = code,
-                onValueChange = { code = it },
-                label = { Text(strings.verifyCodeLabel) },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (errorMessage != null) {
-                Text(
-                    text = errorMessage,
-                    color = Color(0xFFF44336),
-                    modifier = Modifier.padding(top = 8.dp)
+            if (step == 1) {
+                EmailHeroIcon()
+                AccentTitle(
+                    text = strings.checkEmailTitle,
+                    fontSize = 32.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
                 )
-            }
+                Text(
+                    text = strings.checkEmailDescription,
+                    fontFamily = interFamily,
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp,
+                    color = Color.White.copy(alpha = 0.82f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 26.dp)
+                )
 
-            LoadingButton(
-                text = strings.verifyConfirm,
-                isLoading = isVerifying,
-                enabled = code.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                onClick = { onVerify(code) }
-            )
+                EmailInfoCard(
+                    email = email,
+                    noCodeText = strings.checkEmailNoCode,
+                    resendText = strings.checkEmailResend,
+                    onResend = onResendCode,
+                    resendEnabled = !isResending,
+                    waitText = if (resendCooldownSeconds > 0) strings.verifyResendInText(resendCooldownSeconds) else null
+                )
 
-            when {
-                resendExhausted -> {
+                if (resendExhausted) {
                     Text(
                         text = strings.verifyCodeProblem,
-                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = interFamily,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        color = Color.White.copy(alpha = 0.8f),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                        modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
                     )
-                    TextButton(onClick = onContactSupport) {
-                        Text(strings.commonSupport)
-                    }
+                    LinkText(text = strings.commonSupport, onClick = onContactSupport)
                 }
-                resendCooldownSeconds > 0 -> {
+
+                PrimaryButton(
+                    text = strings.checkEmailContinue,
+                    onClick = { step = 2 },
+                    modifier = Modifier.padding(top = 22.dp)
+                )
+                LinkText(
+                    text = strings.authBackToLogin,
+                    onClick = onBack,
+                    color = Color(0xFFC9C5FF),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else {
+                ShieldHeroIcon()
+                AccentTitle(
+                    text = strings.verifyEnterTitle,
+                    fontSize = 32.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+                )
+                Text(
+                    text = strings.verifyEnterDescription,
+                    fontFamily = interFamily,
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp,
+                    color = Color.White.copy(alpha = 0.82f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 26.dp)
+                )
+
+                CodeBoxes(
+                    value = code,
+                    onValueChange = { code = it },
+                    isError = errorMessage != null,
+                    keyboardActions = KeyboardActions(onDone = { if (canVerify && !isVerifying) onVerify(code) })
+                )
+
+                Row(
+                    modifier = Modifier.padding(top = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ClockIcon(color = if (secondsLeft in 1..60) Brand.Error else Brand.Yellow)
                     Text(
-                        text = strings.verifyResendInText(resendCooldownSeconds),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                        text = if (secondsLeft > 0) strings.verifyCodeExpires(timeText) else strings.verifyCodeExpired,
+                        fontFamily = interFamily,
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.88f)
                     )
                 }
-                else -> {
-                    TextButton(
-                        onClick = onResendCode,
-                        enabled = !isResending
-                    ) {
-                        Text(if (isResending) strings.verifyResendSending else strings.verifyResendLink)
+
+                if (errorMessage != null) {
+                    GentleError(message = errorMessage, modifier = Modifier.padding(top = 14.dp))
+                }
+
+                PrimaryButton(
+                    text = strings.verifyConfirm,
+                    onClick = { onVerify(code) },
+                    enabled = canVerify,
+                    isLoading = isVerifying,
+                    modifier = Modifier.padding(top = 20.dp)
+                )
+
+                when {
+                    resendExhausted -> {
+                        Text(
+                            text = strings.verifyCodeProblem,
+                            fontFamily = interFamily,
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            color = Color.White.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+                        )
+                        LinkText(text = strings.commonSupport, onClick = onContactSupport)
+                    }
+                    resendCooldownSeconds > 0 -> {
+                        Text(
+                            text = strings.verifyResendInText(resendCooldownSeconds),
+                            fontFamily = interFamily,
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.75f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+                        )
+                    }
+                    else -> {
+                        LinkText(
+                            text = strings.forgotResend,
+                            onClick = onResendCode,
+                            enabled = !isResending,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     }
                 }
             }

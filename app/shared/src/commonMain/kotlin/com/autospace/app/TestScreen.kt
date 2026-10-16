@@ -68,7 +68,7 @@ fun TestScreen(
     username: String,
     scope: CoroutineScope,
     onFinish: () -> Unit,
-    onSaveResult: (correctCount: Int, total: Int) -> Unit,
+    onSaveResult: (correctCount: Int, total: Int, answers: String) -> Unit,
     onLicenseRequired: (code: String) -> Unit = {},
     onSessionExpired: () -> Unit = {}
 ) {
@@ -80,7 +80,7 @@ fun TestScreen(
     val contentModifier = if (windowSizeClass == WindowSizeClass.Compact) {
         Modifier.fillMaxWidth()
     } else {
-        Modifier.fillMaxWidth().widthIn(max = 600.dp)
+        Modifier.widthIn(max = 600.dp).fillMaxWidth()
     }
 
     var questions by remember { mutableStateOf<List<Question>?>(null) }
@@ -225,7 +225,10 @@ fun TestScreen(
 
     if (showResult) {
         LaunchedEffect(Unit) {
-            onSaveResult(correctCount, loadedQuestions.size)
+            val answersPayload = loadedQuestions.indices.mapNotNull { idx ->
+                answers[idx]?.let { optionId -> "${loadedQuestions[idx].id}:$optionId" }
+            }.joinToString(",")
+            onSaveResult(correctCount, loadedQuestions.size, answersPayload)
         }
         ResultScreen(correctCount = correctCount, total = loadedQuestions.size, onFinish = onFinish)
         return

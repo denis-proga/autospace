@@ -44,8 +44,16 @@ data class SaveResultRequest(
     val username: String,
     val testNumber: Int,
     val mode: String,
-    val correctCount: Int,
-    val totalQuestions: Int
+    // "idВопроса:номерВарианта", через запятую; номер варианта 1..4 (A..D). Результат считает сервер
+    val answers: String
+)
+
+@Serializable
+data class SaveResultResponse(
+    val success: Boolean,
+    val message: String,
+    val correctCount: Int = 0,
+    val totalQuestions: Int = 0
 )
 
 @Serializable
@@ -196,4 +204,40 @@ data class ResetPasswordRequest(
     val identifier: String,
     val code: String,
     val newPassword: String
+)
+
+@Serializable
+data class TicketCreateRequest(
+    val category: String,
+    val subject: String,
+    val message: String,
+    val contactEmail: String? = null,
+    val language: String = "ru"
+)
+
+@Serializable
+data class TicketDto(
+    val id: Int,
+    val category: String,
+    val subject: String,
+    val message: String,
+    val status: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastReply: String? = null,
+    val lastReplyAt: Long? = null
+)
+
+@Serializable
+data class TicketsResponse(
+    val tickets: List<TicketDto>,
+    val remaining: Int
+)
+
+@Serializable
+data class TicketCreateResponse(
+    val success: Boolean,
+    val code: String = "",
+    val ticketId: Int = 0,
+    val remaining: Int = 0
 )

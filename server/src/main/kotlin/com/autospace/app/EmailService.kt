@@ -63,6 +63,18 @@ object EmailService {
         return send(toEmail, resetTemplateFor(language, code), code)
     }
 
+    /** Письмо с ответом поддержки на обращение. */
+    suspend fun sendTicketReply(toEmail: String, ticketId: Int, subject: String, reply: String, language: String = "ru"): Boolean {
+        val template = when (language) {
+            "en" -> EmailTemplate("AutoSpace — reply to request #$ticketId", "Support replied to your request \"$subject\":\n\n$reply\n\nYou can continue in the app, section Support.")
+            "es" -> EmailTemplate("AutoSpace — respuesta a la solicitud #$ticketId", "Soporte ha respondido a tu solicitud \"$subject\":\n\n$reply\n\nPuedes continuar en la aplicación, sección Soporte.")
+            "de" -> EmailTemplate("AutoSpace — Antwort auf Anfrage #$ticketId", "Der Support hat auf deine Anfrage \"$subject\" geantwortet:\n\n$reply\n\nDu kannst in der App im Bereich Support weiterschreiben.")
+            "uk" -> EmailTemplate("AutoSpace — відповідь на звернення #$ticketId", "Підтримка відповіла на ваше звернення \"$subject\":\n\n$reply\n\nПродовжити можна в застосунку, розділ Підтримка.")
+            else -> EmailTemplate("AutoSpace — ответ на обращение #$ticketId", "Поддержка ответила на ваше обращение \"$subject\":\n\n$reply\n\nПродолжить можно в приложении, раздел «Поддержка».")
+        }
+        return send(toEmail, template, "ticket $ticketId")
+    }
+
     private suspend fun send(toEmail: String, template: EmailTemplate, codeForLog: String): Boolean {
         if (resendApiKey.isEmpty()) {
             println("Resend not configured, skipping email send. Code would have been: $codeForLog")
