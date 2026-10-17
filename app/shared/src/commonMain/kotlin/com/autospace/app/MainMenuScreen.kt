@@ -141,6 +141,7 @@ private fun MainMenuContent(
     var alreadyCompletedTestNumber by remember { mutableStateOf<Int?>(null) }
     var license by remember { mutableStateOf<LicenseInfoDto?>(null) }
     var toastVisible by remember { mutableStateOf(PreviewData.SHOW) }
+    var continueProgress by remember { mutableStateOf<LatestProgressDto?>(null) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
@@ -152,6 +153,20 @@ private fun MainMenuContent(
             MenuAvatar.id = license?.avatar.orEmpty()
         } catch (e: Exception) {
         }
+        try {
+            val latest = ApiClient.getLatestProgress()
+            // показываем только то, что уже начато: завершённые тесты сервер из прогресса удаляет
+            continueProgress = if (latest.found) latest else null
+        } catch (e: Exception) {
+        }
+    }
+
+    // «Продолжить»: открываем тот же тест в том же режиме, где человек остановился
+    fun onContinueClick(progress: LatestProgressDto) {
+        val test = tests.firstOrNull { it.number == progress.testNumber } ?: return
+        val mode = if (progress.mode == "EXAM") TestMode.EXAM else TestMode.LEARNING
+        MenuModeMemory.mode = mode
+        onTestSelected(test, mode)
     }
 
     val latestByTestMode = remember(results) {
@@ -199,6 +214,9 @@ private fun MainMenuContent(
                 onLanguageChange = onLanguageChange,
                 onLogout = onLogout,
                 onOpenSupport = onOpenSupport,
+                onOpenProfile = onOpenProfile,
+                continueProgress = continueProgress,
+                onContinue = { onContinueClick(it) },
                 onOpenStats = onOpenStats,
                 onOpenPaywall = onOpenPaywall,
                 toastVisible = toastVisible,
@@ -244,7 +262,7 @@ private fun MainMenuContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) { centerContent() }
                         Column(modifier = Modifier.width(372.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            ContinuePanel()
+                            ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                             QuestionPanel()
                             RatingPanel()
                             MistakesPanel()
@@ -262,7 +280,7 @@ private fun MainMenuContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) { centerContent() }
                     Column(modifier = Modifier.width(340.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ContinuePanel()
+                        ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                         QuestionPanel()
                         RatingPanel()
                         MistakesPanel()
@@ -277,11 +295,11 @@ private fun MainMenuContent(
                         .padding(horizontal = 24.dp, vertical = 20.dp)
                 ) {
                     centerContent()
-                    if (PreviewData.SHOW) {
+                    if (PreviewData.SHOW || continueProgress != null) {
                         Spacer(Modifier.height(20.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                ContinuePanel()
+                                ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                                 QuestionPanel()
                             }
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -301,9 +319,9 @@ private fun MainMenuContent(
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
                     centerContent()
-                    if (PreviewData.SHOW) {
+                    if (PreviewData.SHOW || continueProgress != null) {
                         Spacer(Modifier.height(10.dp))
-                        SideCards()
+                        SideCards(continueProgress, onContinue = { onContinueClick(it) })
                         if (toastVisible) {
                             Spacer(Modifier.height(14.dp))
                             AchievementToast(onClose = { toastVisible = false })
@@ -1001,8 +1019,9 @@ private fun ResetAllButton(text: String, onClick: () -> Unit) {
 // ------------------------------------------------------------------------------------------
 
 @Composable
-private fun ContinuePanel() {
-    if (!PreviewData.SHOW) return
+private fun ContinuePanel(progress: LatestProgressDto?, onContinue: (LatestProgressDto) -> Unit) {
+    // без начатого теста блок не нужен
+    if (progress == null) return
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     DashPanel(padding = 0.dp) {
@@ -1017,13 +1036,13 @@ private fun ContinuePanel() {
                     Column(modifier = Modifier.padding(start = 14.dp)) {
                         Text(strings.dashContinue, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
                         Text(
-                            strings.dashContinueSubtitle(PreviewData.CONTINUE_TEST, PreviewData.CONTINUE_QUESTION, 30),
+                            strings.dashContinueSubtitle(progress.testNumber, progress.currentIndex + 1, 30),
                             fontFamily = interFamily, fontSize = 13.sp, color = Dash.Text2, maxLines = 2
                         )
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                ContinueButton(strings.dashContinue, onClick = { })
+                ContinueButton(strings.dashContinue, onClick = { onContinue(progress) })
             }
         }
     }
@@ -1097,27 +1116,30 @@ private fun MistakesPanel() {
 
 /** Телефон: те же блоки в виде компактных строк. */
 @Composable
-private fun SideCards() {
-    if (!PreviewData.SHOW) return
+private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressDto) -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
-    DashPanel(padding = 14.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Dash.Blue.copy(alpha = 0.35f)),
-                contentAlignment = Alignment.Center
-            ) { DocIcon(Color(0xFF7FB0FF), 26.dp, filled = true) }
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(strings.dashContinue + ":", fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-                Text(
-                    strings.dashContinueSubtitle(PreviewData.CONTINUE_TEST, PreviewData.CONTINUE_QUESTION, 30),
-                    fontFamily = interFamily, fontSize = 13.sp, color = Dash.Text2
-                )
+    if (progress != null) {
+        DashPanel(padding = 14.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Dash.Blue.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
+                ) { DocIcon(Color(0xFF7FB0FF), 26.dp, filled = true) }
+                Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+                    Text(strings.dashContinue + ":", fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    Text(
+                        strings.dashContinueSubtitle(progress.testNumber, progress.currentIndex + 1, 30),
+                        fontFamily = interFamily, fontSize = 13.sp, color = Dash.Text2
+                    )
+                }
+                PanelButton(strings.dashContinue, onClick = { onContinue(progress) }, yellow = true)
             }
-            PanelButton(strings.dashContinue, onClick = { }, yellow = true)
         }
     }
+
+    if (!PreviewData.SHOW) return
     CompactRow(icon = { BulbIcon(30.dp) }, title = strings.dashQuestionOfDay, subtitle = strings.dashQuestionOfDaySub) {
         PanelButton(strings.dashAnswer, onClick = { }, modifier = Modifier.height(38.dp))
     }

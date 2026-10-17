@@ -59,13 +59,16 @@ internal fun PhoneDashboard(
     onLanguageChange: (Language) -> Unit,
     onLogout: () -> Unit,
     onOpenSupport: () -> Unit,
+    onOpenProfile: () -> Unit,
+    continueProgress: LatestProgressDto?,
+    onContinue: (LatestProgressDto) -> Unit,
     onOpenStats: () -> Unit,
     onOpenPaywall: () -> Unit,
     toastVisible: Boolean,
     onToastClose: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        PhoneTopBar(username, language, onLanguageChange, onLogout, onOpenSupport, onOpenStats)
+        PhoneTopBar(username, language, onLanguageChange, onLogout, onOpenSupport, onOpenProfile, onOpenStats)
 
         Column(
             modifier = Modifier
@@ -77,7 +80,7 @@ internal fun PhoneDashboard(
         ) {
             PhoneGreeting(username, license, onOpenPaywall)
             PhoneStrip()
-            if (PreviewData.SHOW) PhoneContinue()
+            if (continueProgress != null) PhoneContinue(continueProgress, onContinue)
             PhoneTests(tests, mode, onModeChange, stateFor, onTileClick, onResetAll)
             if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose)
             Spacer(Modifier.height(12.dp))
@@ -96,6 +99,7 @@ private fun PhoneTopBar(
     onLanguageChange: (Language) -> Unit,
     onLogout: () -> Unit,
     onOpenSupport: () -> Unit,
+    onOpenProfile: () -> Unit,
     onOpenStats: () -> Unit
 ) {
     val strings = LocalStrings.current
@@ -120,7 +124,13 @@ private fun PhoneTopBar(
                 Spacer(Modifier.weight(1f))
                 LanguageMenuChip(language, onLanguageChange, dense = true)
                 Spacer(Modifier.width(8.dp))
-                AvatarCircle(initial = username, size = 26.dp)
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onOpenProfile)
+                ) {
+                    UserAvatar(username = username, avatarId = MenuAvatar.id, size = 26.dp)
+                }
                 if (showName) {
                     Text(
                         text = username.replaceFirstChar { it.uppercase() },
@@ -350,7 +360,7 @@ private fun PhoneStripDivider() {
 }
 
 @Composable
-private fun PhoneContinue() {
+private fun PhoneContinue(progress: LatestProgressDto, onContinue: (LatestProgressDto) -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     val shape = RoundedCornerShape(16.dp)
@@ -367,11 +377,11 @@ private fun PhoneContinue() {
             Column(modifier = Modifier.padding(start = 9.dp).weight(1f)) {
                 Text(strings.dashContinue + ":", fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
                 Text(
-                    strings.dashContinueSubtitle(PreviewData.CONTINUE_TEST, PreviewData.CONTINUE_QUESTION, 30),
+                    strings.dashContinueSubtitle(progress.testNumber, progress.currentIndex + 1, 30),
                     fontFamily = interFamily, fontSize = 10.sp, color = PhoneSub, maxLines = 2
                 )
             }
-            PanelButton(strings.dashContinue, onClick = { }, yellow = true, dense = true)
+            PanelButton(strings.dashContinue, onClick = { onContinue(progress) }, yellow = true, dense = true)
         }
     }
 }

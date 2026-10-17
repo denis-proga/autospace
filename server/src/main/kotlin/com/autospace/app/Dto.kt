@@ -295,3 +295,14 @@ data class UpdateProfileResponse(
     val username: String = "",
     val avatar: String = ""
 )
+
+/** Последний незавершённый тест для блока «Продолжить». */
+@Serializable
+data class LatestProgressResponse(
+    val found: Boolean,
+    val testNumber: Int = 0,
+    val mode: String = "LEARNING",
+    val currentIndex: Int = 0,
+    val answered: Int = 0,
+    val updatedAt: Long = 0L
+)

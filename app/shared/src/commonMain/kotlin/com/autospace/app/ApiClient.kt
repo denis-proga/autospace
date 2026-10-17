@@ -183,6 +183,17 @@ data class PlansResponseDto(
     val awayUntil: String = ""
 )
 
+/** Последний незавершённый тест для блока «Продолжить». */
+@Serializable
+data class LatestProgressDto(
+    val found: Boolean,
+    val testNumber: Int = 0,
+    val mode: String = "LEARNING",
+    val currentIndex: Int = 0,
+    val answered: Int = 0,
+    val updatedAt: Long = 0L
+)
+
 @Serializable
 data class UpdateProfileRequestDto(
     val username: String? = null,
@@ -461,6 +472,12 @@ object ApiClient {
 
     suspend fun getPlans(): PlansResponseDto {
         val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun getLatestProgress(): LatestProgressDto {
+        val response = client.get("$BASE_URL/progress/latest") { auth() }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

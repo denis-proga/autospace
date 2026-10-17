@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -485,6 +486,40 @@ fun Application.module() {
             }
 
             call.respond(AuthResponse(success = true, message = "Progress saved"))
+        }
+
+        // Последний незавершённый тест: для блока «Продолжить» на главной.
+        // Завершённые тесты из test_progress удаляются, поэтому здесь остаются только начатые.
+        get("/progress/latest") {
+            val user = call.requireUser() ?: return@get
+
+            val row = transaction {
+                TestProgress.selectAll()
+                    .where { TestProgress.userId eq user.id }
+                    .orderBy(TestProgress.updatedAt, SortOrder.DESC)
+                    .limit(1)
+                    .singleOrNull()
+            }
+
+            if (row == null) {
+                call.respond(LatestProgressResponse(found = false))
+                return@get
+            }
+
+            val answered = row[TestProgress.answersData]
+                .split(",")
+                .count { it.isNotBlank() }
+
+            call.respond(
+                LatestProgressResponse(
+                    found = true,
+                    testNumber = row[TestProgress.testNumber],
+                    mode = row[TestProgress.mode],
+                    currentIndex = row[TestProgress.currentIndex],
+                    answered = answered,
+                    updatedAt = row[TestProgress.updatedAt]
+                )
+            )
         }
 
         get("/progress/{username}/{testNumber}/{mode}") {
