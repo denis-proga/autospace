@@ -64,6 +64,11 @@ private const val REFERENCE_WIDTH_DP = 340f
  * Последний выбранный режим (Обучение или Экзамен). Живёт, пока приложение открыто, а не пока открыта главная
  * страница, поэтому после теста главная остаётся в том же режиме, пока человек сам его не сменит.
  */
+/** Выбранный аватар: главная показывает его в шапке, профиль меняет. */
+internal object MenuAvatar {
+    var id by mutableStateOf("")
+}
+
 internal object MenuModeMemory {
     var mode by mutableStateOf(TestMode.LEARNING)
 }
@@ -144,6 +149,7 @@ private fun MainMenuContent(
         }
         try {
             license = ApiClient.getLicense()
+            MenuAvatar.id = license?.avatar.orEmpty()
         } catch (e: Exception) {
         }
     }
@@ -553,7 +559,7 @@ private fun UserChip(username: String, showName: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AvatarCircle(initial = username, size = 40.dp)
+        UserAvatar(username = username, avatarId = MenuAvatar.id, size = 40.dp)
         if (showName) {
             Text(
                 text = username.replaceFirstChar { it.uppercase() },

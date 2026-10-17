@@ -4,6 +4,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -19,6 +20,39 @@ object UserRepository {
         Instant.ofEpochMilli(ms).atZone(adminZone).toLocalDate().toString()
 
     /** Выдать или продлить платный доступ. Если подписка ещё действует, дни добавляются к её концу. */
+    /** Выбранный аватар пользователя; пустая строка — кружок с буквой имени. */
+    fun avatarOf(userId: Int): String = transaction {
+        Users.selectAll().where { Users.id eq userId }.singleOrNull()?.get(Users.avatar).orEmpty()
+    }
+
+    /**
+     * Меняет имя и аватар. Имя проверяется на длину, допустимые символы и занятость:
+     * результаты, прогресс и обращения привязаны к id, поэтому переименование ничего не теряет.
+     * Возвращает код ошибки или пустую строку при успехе.
+     */
+    fun updateProfile(userId: Int, newUsername: String?, newAvatar: String?): String = transaction {
+        if (newUsername != null) {
+            val name = newUsername.trim()
+            if (name.length < 3 || name.length > 20) return@transaction "BAD_USERNAME"
+            if (!name.all { it.isLetterOrDigit() || it == '_' || it == '-' || it == '.' }) return@transaction "BAD_USERNAME"
+
+            val taken = Users.selectAll().where { Users.username.lowerCase() eq name.lowercase() }
+                .any { it[Users.id] != userId }
+            if (taken) return@transaction "USERNAME_TAKEN"
+
+            Users.update({ Users.id eq userId }) { it[Users.username] = name }
+        }
+
+        if (newAvatar != null) {
+            val avatar = newAvatar.trim()
+            val allowed = avatar.isEmpty() || avatar in listOf("avatar_1", "avatar_2", "avatar_3", "avatar_4", "avatar_5", "avatar_6")
+            if (!allowed) return@transaction "BAD_AVATAR"
+            Users.update({ Users.id eq userId }) { it[Users.avatar] = avatar }
+        }
+
+        ""
+    }
+
     fun grantDays(userId: Int, days: Int): String {
         return transaction<String> {
             val row = Users.selectAll().where { Users.id eq userId }.singleOrNull()

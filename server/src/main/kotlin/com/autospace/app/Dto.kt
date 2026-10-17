@@ -151,6 +151,8 @@ data class LicenseInfo(
     val status: String,
     // почта нужна экрану профиля; приходит только владельцу токена
     val email: String = "",
+    // выбранный аватар («avatar_3»); пустая строка — кружок с буквой имени
+    val avatar: String = "",
     // доступ открыт как подарок на время отъезда админа: платить сейчас не нужно
     val giftAccess: Boolean = false,
     val expiresAt: Long? = null,
@@ -277,4 +279,19 @@ data class TicketCreateResponse(
     val code: String = "",
     val ticketId: Int = 0,
     val remaining: Int = 0
+)
+
+/** Изменение профиля: имя и аватар. Любое поле можно не присылать. */
+@Serializable
+data class UpdateProfileRequest(
+    val username: String? = null,
+    val avatar: String? = null
+)
+
+@Serializable
+data class UpdateProfileResponse(
+    val success: Boolean,
+    val code: String = "",
+    val username: String = "",
+    val avatar: String = ""
 )

@@ -605,6 +605,27 @@ fun Application.module() {
             )
         }
 
+        // Профиль: смена имени и аватара
+        post("/profile") {
+            val user = call.requireUser() ?: return@post
+            val request = call.receive<UpdateProfileRequest>()
+
+            val error = UserRepository.updateProfile(user.id, request.username, request.avatar)
+            if (error.isNotEmpty()) {
+                call.respond(UpdateProfileResponse(success = false, code = error))
+                return@post
+            }
+
+            // имя могло смениться: отдаём то, что теперь в базе
+            call.respond(
+                UpdateProfileResponse(
+                    success = true,
+                    username = request.username?.trim() ?: user.username,
+                    avatar = UserRepository.avatarOf(user.id)
+                )
+            )
+        }
+
         // Создать заказ на оплату (до перевода денег). Повторный вызов возвращает тот же активный заказ.
         post("/payment-order") {
             val user = call.requireUser() ?: return@post

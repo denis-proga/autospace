@@ -152,6 +152,7 @@ data class LoginResponseDto(
 data class LicenseInfoDto(
     val status: String,
     val email: String = "",
+    val avatar: String = "",
     // доступ открыт как подарок на время отъезда админа: платить сейчас не нужно
     val giftAccess: Boolean = false,
     val expiresAt: Long? = null,
@@ -180,6 +181,20 @@ data class PlansResponseDto(
     // режим отъезда: оплату принять некому, прежним пользователям тесты открыты как подарок
     val awayMode: Boolean = false,
     val awayUntil: String = ""
+)
+
+@Serializable
+data class UpdateProfileRequestDto(
+    val username: String? = null,
+    val avatar: String? = null
+)
+
+@Serializable
+data class UpdateProfileResponseDto(
+    val success: Boolean,
+    val code: String = "",
+    val username: String = "",
+    val avatar: String = ""
 )
 
 @Serializable
@@ -446,6 +461,17 @@ object ApiClient {
 
     suspend fun getPlans(): PlansResponseDto {
         val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    /** Смена имени и аватара. Пустые поля не меняются. */
+    suspend fun updateProfile(request: UpdateProfileRequestDto): UpdateProfileResponseDto {
+        val response = client.post("$BASE_URL/profile") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

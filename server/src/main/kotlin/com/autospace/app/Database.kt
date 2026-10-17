@@ -30,6 +30,9 @@ object Users : Table("users") {
     // момент регистрации: нужен режиму отъезда, чтобы подарок получили только прежние пользователи
     val createdAt = long("created_at").nullable()
 
+    // выбранный аватар: «avatar_1».. «avatar_6» или пусто
+    val avatar = varchar("avatar", 20).nullable()
+
     override val primaryKey = PrimaryKey(id)
 }
 

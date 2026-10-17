@@ -24,6 +24,12 @@ internal class ProfileStrings(
     val statsAverage: String,
     val statsNone: String,
     val logout: String,
+    val avatarSection: String,
+    val edit: String,
+    val save: String,
+    val cancel: String,
+    val nameTaken: String,
+    val nameBad: String,
 )
 
 private val ProfRu = ProfileStrings(
@@ -49,6 +55,12 @@ private val ProfRu = ProfileStrings(
     statsAverage = "Средний результат",
     statsNone = "Пока нет пройденных тестов",
     logout = "Выйти из аккаунта",
+    avatarSection = "Аватар",
+    edit = "Изменить",
+    save = "Сохранить",
+    cancel = "Отмена",
+    nameTaken = "Это имя уже занято",
+    nameBad = "От 3 до 20 символов: буквы, цифры, точка, дефис, подчёркивание",
 )
 
 private val ProfEn = ProfileStrings(
@@ -74,6 +86,12 @@ private val ProfEn = ProfileStrings(
     statsAverage = "Average score",
     statsNone = "No tests taken yet",
     logout = "Log out",
+    avatarSection = "Avatar",
+    edit = "Edit",
+    save = "Save",
+    cancel = "Cancel",
+    nameTaken = "That name is already taken",
+    nameBad = "3 to 20 characters: letters, digits, dot, hyphen, underscore",
 )
 
 private val ProfEs = ProfileStrings(
@@ -99,6 +117,12 @@ private val ProfEs = ProfileStrings(
     statsAverage = "Resultado medio",
     statsNone = "Aún no has hecho ningún test",
     logout = "Cerrar sesión",
+    avatarSection = "Avatar",
+    edit = "Editar",
+    save = "Guardar",
+    cancel = "Cancelar",
+    nameTaken = "Ese nombre ya está ocupado",
+    nameBad = "De 3 a 20 caracteres: letras, números, punto, guion, guion bajo",
 )
 
 private val ProfDe = ProfileStrings(
@@ -124,6 +148,12 @@ private val ProfDe = ProfileStrings(
     statsAverage = "Durchschnitt",
     statsNone = "Noch keine Tests gemacht",
     logout = "Abmelden",
+    avatarSection = "Avatar",
+    edit = "Ändern",
+    save = "Speichern",
+    cancel = "Abbrechen",
+    nameTaken = "Dieser Name ist schon vergeben",
+    nameBad = "3 bis 20 Zeichen: Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich",
 )
 
 private val ProfUk = ProfileStrings(
@@ -149,6 +179,12 @@ private val ProfUk = ProfileStrings(
     statsAverage = "Середній результат",
     statsNone = "Поки немає пройдених тестів",
     logout = "Вийти з акаунта",
+    avatarSection = "Аватар",
+    edit = "Змінити",
+    save = "Зберегти",
+    cancel = "Скасувати",
+    nameTaken = "Це імʼя вже зайняте",
+    nameBad = "Від 3 до 20 символів: літери, цифри, крапка, дефіс, підкреслення",
 )
 
 /** Язык определяется по самим строкам интерфейса, поэтому не зависит от формата кода языка. */

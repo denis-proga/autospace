@@ -562,6 +562,7 @@ fun App() {
                                         ProfileScreen(
                                             username = loggedInUsername ?: "",
                                             results = statsResults,
+                                            onProfileUpdated = { newName -> loggedInUsername = newName },
                                             language = selectedLanguage,
                                             onLanguageChange = { newLanguage ->
                                                 selectedLanguage = newLanguage
