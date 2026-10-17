@@ -27,9 +27,22 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # wasm-opt (Binaryen) падал с кодом 139 (segmentation fault) на большом бинарнике.
+      # Даём ему больше памяти (swap) и снимаем ограничение стека.
+      - name: Add swap space
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 10G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+
       - name: Build web distribution
         run: |
           chmod +x gradlew
+          ulimit -s unlimited || ulimit -s 1048576 || true
+          echo "stack limit: $(ulimit -s)"
           ./gradlew :app:webApp:wasmJsBrowserDistribution --no-daemon
 
       - name: Publish to web-dist branch
