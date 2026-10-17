@@ -172,6 +172,35 @@ data class PaymentClaimRequest(
     val days: Int
 )
 
+/** Заказ на оплату: его видит приложение на экране оплаты. */
+@Serializable
+data class PaymentOrderDto(
+    val orderId: Int,
+    val days: Int,
+    val amountEur: Int,
+    val code: String,
+    val status: String,
+    val createdAt: Long,
+    val expiresAt: Long
+)
+
+/** Реквизиты для перевода. Значения приходят из переменных окружения, в коде их нет. */
+@Serializable
+data class PaymentDetailsDto(
+    val bizumPhone: String = "",
+    val cardNumber: String = "",
+    val holderName: String = ""
+)
+
+@Serializable
+data class PaymentOrderResponse(
+    val success: Boolean,
+    val code: String = "",
+    val order: PaymentOrderDto? = null,
+    val details: PaymentDetailsDto? = null,
+    val license: LicenseInfo? = null
+)
+
 @Serializable
 data class LoginResponse(
     val success: Boolean,

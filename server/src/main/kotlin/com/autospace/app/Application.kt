@@ -72,6 +72,13 @@ private suspend fun ApplicationCall.requireUser(allowBlocked: Boolean = false): 
     return user
 }
 
+/** Реквизиты для перевода: задаются переменными окружения на Render, в коде их нет. */
+private fun paymentDetails(): PaymentDetailsDto = PaymentDetailsDto(
+    bizumPhone = readSetting("PAYMENT_BIZUM_PHONE"),
+    cardNumber = readSetting("PAYMENT_CARD_NUMBER"),
+    holderName = readSetting("PAYMENT_HOLDER_NAME")
+)
+
 private fun buildQuestion(row: ResultRow, lang: String): QuestionResponse {
     val qText: String
     val oA: String
@@ -589,8 +596,8 @@ fun Application.module() {
             call.respond(PlansResponse(plans = LicenseService.PLANS, paymentInstructions = instructions))
         }
 
-        // «Я оплатил»: создаёт заявку и шлёт её админу в Telegram. Одна необработанная заявка на пользователя
-        post("/payment-claim") {
+        // Создать заказ на оплату (до перевода денег). Повторный вызов возвращает тот же активный заказ.
+        post("/payment-order") {
             val user = call.requireUser() ?: return@post
             val request = call.receive<PaymentClaimRequest>()
 
@@ -600,29 +607,81 @@ fun Application.module() {
                 return@post
             }
 
-            val claimId = UserRepository.createPaymentClaim(user.id, plan.days, plan.priceEur)
-            if (claimId == null) {
-                call.respond(AuthResponse(success = false, message = "CLAIM_PENDING"))
+            if (!RateLimiter.allow("order:${user.id}", 10, 60 * 60_000L)) {
+                call.respond(PaymentOrderResponse(success = false, code = "TOO_MANY_REQUESTS"))
+                return@post
+            }
+
+            val order = PaymentOrders.create(user.id, plan.days, plan.priceEur)
+            if (order == null) {
+                call.respond(PaymentOrderResponse(success = false, code = "ORDER_FAILED"))
                 return@post
             }
 
             try {
-                TelegramService.notifyPaymentClaim(
-                    claimId = claimId,
+                TelegramService.notifyPaymentOrder(
+                    orderId = order.orderId,
                     userId = user.id,
                     username = user.username,
                     email = user.email,
-                    days = plan.days,
-                    amountEur = plan.priceEur
+                    days = order.days,
+                    amountEur = order.amountEur,
+                    code = order.code
                 )
             } catch (e: Exception) {
-                println("Telegram payment notify failed: ${e.message}")
-                UserRepository.declineClaim(claimId) // чтобы пользователь мог отправить заявку ещё раз
-                call.respond(AuthResponse(success = false, message = "CLAIM_FAILED"))
-                return@post
+                println("Telegram order notify failed: ${e.message}")
             }
 
-            call.respond(AuthResponse(success = true, message = "Claim sent"))
+            call.respond(PaymentOrderResponse(success = true, order = order, details = paymentDetails()))
+        }
+
+        // Статус заказа: приложение опрашивает его, пока ждёт подтверждения оплаты
+        get("/payment-order/{id}") {
+            val user = call.requireUser() ?: return@get
+            val orderId = call.parameters["id"]?.toIntOrNull()
+            if (orderId == null) {
+                call.respond(HttpStatusCode.BadRequest, ApiError(success = false, code = "BAD_REQUEST", message = "Bad order id"))
+                return@get
+            }
+
+            val order = PaymentOrders.byIdFor(orderId, user.id)
+            if (order == null) {
+                call.respond(PaymentOrderResponse(success = false, code = "NOT_FOUND"))
+                return@get
+            }
+
+            // после оплаты лицензия уже новая: requireUser выше вернул свежие данные пользователя
+            call.respond(
+                PaymentOrderResponse(
+                    success = true,
+                    order = order,
+                    details = paymentDetails(),
+                    license = LicenseService.licenseInfo(user)
+                )
+            )
+        }
+
+        // Активный заказ пользователя, если он уже есть (например, приложение перезапустили)
+        get("/payment-order") {
+            val user = call.requireUser() ?: return@get
+            val order = PaymentOrders.activeFor(user.id)
+            if (order == null) {
+                call.respond(PaymentOrderResponse(success = false, code = "NO_ACTIVE_ORDER"))
+                return@get
+            }
+            call.respond(PaymentOrderResponse(success = true, order = order, details = paymentDetails()))
+        }
+
+        // Отмена заказа пользователем
+        post("/payment-order/{id}/cancel") {
+            val user = call.requireUser() ?: return@post
+            val orderId = call.parameters["id"]?.toIntOrNull()
+            if (orderId == null) {
+                call.respond(HttpStatusCode.BadRequest, ApiError(success = false, code = "BAD_REQUEST", message = "Bad order id"))
+                return@post
+            }
+            val cancelled = PaymentOrders.cancel(user.id, orderId)
+            call.respond(PaymentOrderResponse(success = cancelled, code = if (cancelled) "" else "NOT_FOUND"))
         }
 
         // Мои обращения и сколько ещё можно открыть

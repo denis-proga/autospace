@@ -46,14 +46,23 @@ object DemoSlots : Table("demo_slots") {
     }
 }
 
-/** Заявка «я оплатил»: админ проверяет платёж и подтверждает кнопкой в Telegram. */
+/**
+ * Заказ на оплату. Создаётся ДО оплаты: человек видит код платежа и реквизиты, админ подтверждает
+ * поступление денег кнопкой в Telegram, доступ открывается сам.
+ * Статусы: PENDING, PAID, EXPIRED, CANCELLED, DECLINED (APPROVED — старое название PAID).
+ */
 object PaymentClaims : Table("payment_claims") {
     val id = integer("id").autoIncrement()
     val userId = integer("user_id").references(Users.id)
     val days = integer("days")
     val amountEur = integer("amount_eur")
-    val status = varchar("status", 20) // PENDING, APPROVED, DECLINED
+    val status = varchar("status", 20)
     val createdAt = long("created_at")
+
+    // код из назначения платежа (AS-7K3Q), срок жизни заказа и момент подтверждения
+    val paymentCode = varchar("payment_code", 16).nullable()
+    val expiresAt = long("expires_at").nullable()
+    val paidAt = long("paid_at").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }

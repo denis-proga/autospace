@@ -134,24 +134,28 @@ object TelegramService {
         }
     }
 
-    /** Заявка «я оплатил»: админ проверяет, что деньги пришли, и нажимает кнопку. */
-    suspend fun notifyPaymentClaim(claimId: Int, userId: Int, username: String, email: String, days: Int, amountEur: Int) {
+    /**
+     * Новый заказ на оплату. Человек ещё не заплатил: он видит реквизиты и код платежа.
+     * Когда деньги придут, в назначении перевода будет этот код — по нему заказ и подтверждается.
+     */
+    suspend fun notifyPaymentOrder(orderId: Int, userId: Int, username: String, email: String, days: Int, amountEur: Int, code: String) {
         if (botToken.isEmpty() || chatId.isEmpty()) {
             println("Telegram not configured, skipping notification")
             return
         }
 
-        val text = "💶 Заявка на оплату #$claimId\n\n" +
+        val text = "🧾 Заказ #$orderId · код $code\n\n" +
                 "Пользователь: #$userId $username\n" +
                 "Email: $email\n" +
                 "Тариф: $days дн. за $amountEur €\n\n" +
-                "Проверь, что платёж пришёл, и подтверди."
+                "Когда придёт перевод на $amountEur € с кодом $code в назначении, нажми «Оплата пришла».\n" +
+                "Можно и командой: /paid $code"
 
         val keyboard = InlineKeyboardMarkup(
             inline_keyboard = listOf(
                 listOf(
-                    InlineKeyboardButton(text = "✅ Выдать $days дн.", callback_data = "pay_ok:$claimId"),
-                    InlineKeyboardButton(text = "❌ Отклонить", callback_data = "pay_no:$claimId")
+                    InlineKeyboardButton(text = "✅ Оплата пришла ($days дн.)", callback_data = "pay_ok:$orderId"),
+                    InlineKeyboardButton(text = "❌ Отклонить", callback_data = "pay_no:$orderId")
                 )
             )
         )
@@ -217,6 +221,8 @@ private const val HELP_TEXT = "Команды:\n" +
         "/unblock <id> — разблокировать\n" +
         "/demo_reset <id> — вернуть бесплатные тесты\n" +
         "/delete <id> — удалить пользователя\n" +
+        "/orders — заказы, ждущие оплаты\n" +
+        "/paid <код или id> — подтвердить, что деньги пришли\n" +
         "/tickets — открытые обращения\n" +
         "/reply <id> <текст> — ответить на обращение\n" +
         "/close <id> — закрыть обращение"
@@ -274,6 +280,22 @@ suspend fun startTelegramListener() {
                             }
                         }
 
+                        "/orders" -> TelegramService.sendPlainMessage(PaymentOrders.pendingList())
+                        "/paid" -> {
+                            val codeArg = parts.getOrNull(1)?.trim().orEmpty()
+                            if (codeArg.isEmpty()) {
+                                TelegramService.sendPlainMessage("Формат: /paid <код или номер заказа>, например /paid AS-7K3Q")
+                            } else {
+                                val orderId = codeArg.toIntOrNull() ?: PaymentOrders.findByCode(codeArg)
+                                if (orderId == null) {
+                                    TelegramService.sendPlainMessage("Заказ с кодом $codeArg не найден")
+                                } else {
+                                    val result = PaymentOrders.markPaid(orderId)
+                                    TelegramService.sendPlainMessage(result.message)
+                                    if (result.success) notifyUserPaid(result)
+                                }
+                            }
+                        }
                         "/grant" -> {
                             if (arg1 == null || arg2 == null || arg2 !in 1..3650) {
                                 TelegramService.sendPlainMessage("Формат: /grant <id> <дней>, например /grant 5 30")
@@ -389,9 +411,10 @@ suspend fun startTelegramListener() {
                         answerCallback(callback.id, "Пользователь заблокирован 🚫")
                     }
                     "pay_ok" -> {
-                        val result = UserRepository.approveClaim(targetId)
-                        answerCallback(callback.id, result.take(190))
-                        TelegramService.sendPlainMessage(result)
+                        val result = PaymentOrders.markPaid(targetId)
+                        answerCallback(callback.id, result.message.take(190))
+                        TelegramService.sendPlainMessage(result.message)
+                        if (result.success) notifyUserPaid(result)
                     }
                     "tk_work" -> {
                         val ok = TicketRepository.setStatus(targetId, "IN_PROGRESS")
@@ -402,7 +425,7 @@ suspend fun startTelegramListener() {
                         answerCallback(callback.id, if (ok) "Обращение #$targetId закрыто" else "Не найдено")
                     }
                     "pay_no" -> {
-                        val result = UserRepository.declineClaim(targetId)
+                        val result = PaymentOrders.decline(targetId)
                         answerCallback(callback.id, result.take(190))
                     }
                     "approve" -> {
@@ -421,5 +444,20 @@ private suspend fun answerCallback(callbackQueryId: String, text: String) {
     telegramClient.post("https://api.telegram.org/bot$botToken/answerCallbackQuery") {
         contentType(ContentType.Application.Json)
         setBody(Json.encodeToString(AnswerCallback.serializer(), AnswerCallback(callback_query_id = callbackQueryId, text = text)))
+    }
+}
+
+/** Квитанция пользователю после подтверждения оплаты. Ошибку письма глушим: доступ уже открыт. */
+private suspend fun notifyUserPaid(result: PaymentConfirmResult) {
+    try {
+        val email = PaymentOrders.emailOf(result.userId) ?: return
+        EmailService.sendPaymentReceipt(
+            toEmail = email,
+            days = result.days,
+            amountEur = result.amountEur,
+            language = "ru"
+        )
+    } catch (e: Exception) {
+        println("Payment receipt email failed: ${e.message}")
     }
 }

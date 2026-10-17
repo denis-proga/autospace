@@ -179,7 +179,8 @@ fun App() {
                             // на экране выбора языка верхней панели нет: там полноэкранная сцена
                             if (currentScreen != Screen.LanguageSelection && currentScreen != Screen.Auth &&
                                 currentScreen !is Screen.VerifyCode && currentScreen != Screen.ForgotPassword &&
-                                currentScreen != Screen.MainMenu && currentScreen != Screen.SupportCenter) {
+                                currentScreen != Screen.MainMenu && currentScreen != Screen.SupportCenter &&
+                                currentScreen != Screen.Stats && currentScreen !is Screen.Test) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -549,7 +550,8 @@ fun App() {
                                     is Screen.Stats -> {
                                         StatsScreen(
                                             isLoading = isLoadingStats,
-                                            results = statsResults
+                                            results = statsResults,
+                                            onBack = { navigateBack() }
                                         )
                                     }
 

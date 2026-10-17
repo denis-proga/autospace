@@ -61,6 +61,14 @@ internal val LocalCorrectTotal = androidx.compose.runtime.compositionLocalOf { 0
 private const val REFERENCE_WIDTH_DP = 340f
 
 /**
+ * Последний выбранный режим (Обучение или Экзамен). Живёт, пока приложение открыто, а не пока открыта главная
+ * страница, поэтому после теста главная остаётся в том же режиме, пока человек сам его не сменит.
+ */
+internal object MenuModeMemory {
+    var mode by mutableStateOf(TestMode.LEARNING)
+}
+
+/**
  * Главная страница. Для окон уже опорной ширины масштабируются сразу все размеры (и dp, и sp):
  * страница остаётся такой же, как на картинке, только пропорционально меньше, а не разваливается на блоки.
  */
@@ -114,7 +122,8 @@ private fun MainMenuContent(
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
-    var selectedMode by remember { mutableStateOf(TestMode.LEARNING) }
+    // режим хранится вне экрана, поэтому возврат с теста не сбрасывает выбранный Экзамен
+    val selectedMode = MenuModeMemory.mode
     val tests = remember { generateTestList() }
     val scope = rememberCoroutineScope()
 
@@ -174,7 +183,7 @@ private fun MainMenuContent(
                 license = license,
                 tests = tests,
                 mode = selectedMode,
-                onModeChange = { selectedMode = it },
+                onModeChange = { MenuModeMemory.mode = it },
                 stateFor = { test -> tileStateFor(test.number, selectedMode, latestByTestMode[test.number to selectedMode.name], license) },
                 onTileClick = { onTileClick(it) },
                 onResetAll = { showResetConfirmation = true },
@@ -206,7 +215,7 @@ private fun MainMenuContent(
                     layout = layout,
                     tests = tests,
                     mode = selectedMode,
-                    onModeChange = { selectedMode = it },
+                    onModeChange = { MenuModeMemory.mode = it },
                     stateFor = { test -> tileStateFor(test.number, selectedMode, latestByTestMode[test.number to selectedMode.name], license) },
                     onTileClick = { onTileClick(it) },
                     onResetAll = { showResetConfirmation = true }

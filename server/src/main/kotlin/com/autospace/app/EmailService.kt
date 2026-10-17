@@ -75,6 +75,33 @@ object EmailService {
         return send(toEmail, template, "ticket $ticketId")
     }
 
+    /** Квитанция об оплате: подтверждение, что деньги получены и доступ открыт. */
+    suspend fun sendPaymentReceipt(toEmail: String, days: Int, amountEur: Int, language: String = "ru"): Boolean {
+        val template = when (language) {
+            "en" -> EmailTemplate(
+                "AutoSpace — payment received",
+                "We received your payment of $amountEur €.\n\nFull access to all tests is open for $days days.\n\nIf something looks wrong, reply in the app, section Support."
+            )
+            "es" -> EmailTemplate(
+                "AutoSpace — pago recibido",
+                "Hemos recibido tu pago de $amountEur €.\n\nEl acceso completo a todos los tests está abierto durante $days días.\n\nSi algo no cuadra, escríbenos en la aplicación, sección Soporte."
+            )
+            "de" -> EmailTemplate(
+                "AutoSpace — Zahlung erhalten",
+                "Wir haben deine Zahlung über $amountEur € erhalten.\n\nDer volle Zugang zu allen Tests ist für $days Tage freigeschaltet.\n\nFalls etwas nicht stimmt, schreib uns in der App im Bereich Support."
+            )
+            "uk" -> EmailTemplate(
+                "AutoSpace — оплату отримано",
+                "Ми отримали вашу оплату на $amountEur €.\n\nПовний доступ до всіх тестів відкрито на $days днів.\n\nЯкщо щось не так, напишіть у застосунку, розділ «Підтримка»."
+            )
+            else -> EmailTemplate(
+                "AutoSpace — оплата получена",
+                "Мы получили вашу оплату на $amountEur €.\n\nПолный доступ ко всем тестам открыт на $days дней.\n\nЕсли что-то не так, напишите нам в приложении, раздел «Поддержка»."
+            )
+        }
+        return send(toEmail, template, "payment $amountEur EUR")
+    }
+
     private suspend fun send(toEmail: String, template: EmailTemplate, codeForLog: String): Boolean {
         if (resendApiKey.isEmpty()) {
             println("Resend not configured, skipping email send. Code would have been: $codeForLog")
