@@ -126,6 +126,7 @@ object LicenseService {
 
         return LicenseInfo(
             status = user.status,
+            email = user.email,
             giftAccess = AwayMode.giftAccess(user.id),
             expiresAt = user.expiresAt,
             demoLimit = DEMO_TEST_LIMIT,

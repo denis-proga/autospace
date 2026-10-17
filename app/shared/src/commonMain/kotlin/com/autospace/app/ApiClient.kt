@@ -151,6 +151,9 @@ data class LoginResponseDto(
 @Serializable
 data class LicenseInfoDto(
     val status: String,
+    val email: String = "",
+    // доступ открыт как подарок на время отъезда админа: платить сейчас не нужно
+    val giftAccess: Boolean = false,
     val expiresAt: Long? = null,
     val demoLimit: Int,
     val demoTests: List<Int> = emptyList(),
@@ -173,12 +176,45 @@ data class PlanItemDto(
 @Serializable
 data class PlansResponseDto(
     val plans: List<PlanItemDto>,
-    val paymentInstructions: String = ""
+    val paymentInstructions: String = "",
+    // режим отъезда: оплату принять некому, прежним пользователям тесты открыты как подарок
+    val awayMode: Boolean = false,
+    val awayUntil: String = ""
 )
 
 @Serializable
 data class PaymentClaimRequestDto(
     val days: Int
+)
+
+/** Заказ на оплату: его видит человек на экране оплаты. */
+@Serializable
+data class PaymentOrderDto(
+    val orderId: Int,
+    val days: Int,
+    val amountEur: Int,
+    val code: String,
+    val status: String,
+    val createdAt: Long,
+    val expiresAt: Long
+)
+
+/** Реквизиты для перевода. Приходят с сервера, в приложении не хранятся. */
+@Serializable
+data class PaymentDetailsDto(
+    val bizumPhone: String = "",
+    val cardNumber: String = "",
+    val holderName: String = ""
+)
+
+@Serializable
+data class PaymentOrderResponseDto(
+    val success: Boolean,
+    val code: String = "",
+    val awayUntil: String = "",
+    val order: PaymentOrderDto? = null,
+    val details: PaymentDetailsDto? = null,
+    val license: LicenseInfoDto? = null
 )
 
 @Serializable
@@ -414,12 +450,33 @@ object ApiClient {
         return response.body()
     }
 
-    suspend fun sendPaymentClaim(request: PaymentClaimRequestDto): AuthResponseDto {
-        val response = client.post("$BASE_URL/payment-claim") {
+    /** Создать заказ. Повторный вызов возвращает тот же активный заказ, а не плодит новые. */
+    suspend fun createPaymentOrder(request: PaymentClaimRequestDto): PaymentOrderResponseDto {
+        val response = client.post("$BASE_URL/payment-order") {
             auth()
             contentType(ContentType.Application.Json)
             setBody(request)
         }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    /** Статус заказа: экран опрашивает его, пока ждёт подтверждения оплаты. */
+    suspend fun getPaymentOrder(orderId: Int): PaymentOrderResponseDto {
+        val response = client.get("$BASE_URL/payment-order/$orderId") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    /** Активный заказ, если он уже есть (например, приложение перезапустили). */
+    suspend fun getActivePaymentOrder(): PaymentOrderResponseDto {
+        val response = client.get("$BASE_URL/payment-order") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun cancelPaymentOrder(orderId: Int): PaymentOrderResponseDto {
+        val response = client.post("$BASE_URL/payment-order/$orderId/cancel") { auth() }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

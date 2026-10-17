@@ -149,6 +149,8 @@ data class SessionRequest(
 @Serializable
 data class LicenseInfo(
     val status: String,
+    // почта нужна экрану профиля; приходит только владельцу токена
+    val email: String = "",
     // доступ открыт как подарок на время отъезда админа: платить сейчас не нужно
     val giftAccess: Boolean = false,
     val expiresAt: Long? = null,

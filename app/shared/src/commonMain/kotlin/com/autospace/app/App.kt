@@ -180,7 +180,8 @@ fun App() {
                             if (currentScreen != Screen.LanguageSelection && currentScreen != Screen.Auth &&
                                 currentScreen !is Screen.VerifyCode && currentScreen != Screen.ForgotPassword &&
                                 currentScreen != Screen.MainMenu && currentScreen != Screen.SupportCenter &&
-                                currentScreen != Screen.Stats && currentScreen !is Screen.Test) {
+                                currentScreen != Screen.Stats && currentScreen !is Screen.Test &&
+                                currentScreen !is Screen.Paywall && currentScreen != Screen.Profile) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -520,6 +521,16 @@ fun App() {
                                             },
                                             onLogout = { resetToStart() },
                                             onOpenSupport = { navigateTo(Screen.SupportCenter) },
+                                            onOpenProfile = {
+                                                navigateTo(Screen.Profile)
+                                                scope.launch {
+                                                    try {
+                                                        val response = ApiClient.getResults(loggedInUsername ?: "")
+                                                        statsResults = response.results
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
+                                            },
                                             onTestSelected = { test, mode ->
                                                 navigateTo(Screen.Test(test, mode))
                                             },
@@ -544,6 +555,21 @@ fun App() {
                                             reason = screen.reason,
                                             onAccessGranted = { navigateBack() },
                                             onSessionExpired = { resetToStart() }
+                                        )
+                                    }
+
+                                    is Screen.Profile -> {
+                                        ProfileScreen(
+                                            username = loggedInUsername ?: "",
+                                            results = statsResults,
+                                            language = selectedLanguage,
+                                            onLanguageChange = { newLanguage ->
+                                                selectedLanguage = newLanguage
+                                                saveLanguageCode(newLanguage.code)
+                                            },
+                                            onOpenPaywall = { navigateTo(Screen.Paywall("MENU")) },
+                                            onLogout = { resetToStart() },
+                                            onBack = { navigateBack() }
                                         )
                                     }
 

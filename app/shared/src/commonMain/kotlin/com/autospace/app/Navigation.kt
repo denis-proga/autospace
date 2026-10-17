@@ -13,5 +13,6 @@ sealed class Screen {
     data class Paywall(val reason: String) : Screen() // DEMO_LIMIT, LICENSE_EXPIRED или MENU
 
     object Stats : Screen()
+    object Profile : Screen()
     data class Test(val test: TestInfo, val mode: TestMode) : Screen()
 }

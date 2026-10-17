@@ -82,7 +82,8 @@ fun MainMenuScreen(
     language: Language,
     onLanguageChange: (Language) -> Unit,
     onLogout: () -> Unit,
-    onOpenSupport: () -> Unit
+    onOpenSupport: () -> Unit,
+    onOpenProfile: () -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val base = LocalDensity.current
@@ -100,7 +101,7 @@ fun MainMenuScreen(
             ) {
                 MainMenuContent(
                     username, refreshKey, onTestSelected, onOpenStats, onOpenPaywall,
-                    language, onLanguageChange, onLogout, onOpenSupport
+                    language, onLanguageChange, onLogout, onOpenSupport, onOpenProfile
                 )
             }
         }
@@ -117,7 +118,8 @@ private fun MainMenuContent(
     language: Language,
     onLanguageChange: (Language) -> Unit,
     onLogout: () -> Unit,
-    onOpenSupport: () -> Unit
+    onOpenSupport: () -> Unit,
+    onOpenProfile: () -> Unit
 ) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
@@ -205,6 +207,7 @@ private fun MainMenuContent(
                 onLanguageChange = onLanguageChange,
                 onLogout = onLogout,
                 onOpenSupport = onOpenSupport,
+                onOpenProfile = onOpenProfile,
                 onOpenStats = onOpenStats
             )
 
@@ -391,6 +394,7 @@ private fun TopBar(
     onLanguageChange: (Language) -> Unit,
     onLogout: () -> Unit,
     onOpenSupport: () -> Unit,
+    onOpenProfile: () -> Unit,
     onOpenStats: () -> Unit
 ) {
     val strings = LocalStrings.current
@@ -425,7 +429,7 @@ private fun TopBar(
                         LanguageMenuChip(language, onLanguageChange)
                     }
                     Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                        UserChip(username, showName = true)
+                        UserChip(username, showName = true, onClick = onOpenProfile)
                     }
                 }
             } else if (singleRow) {
@@ -440,7 +444,7 @@ private fun TopBar(
                     Spacer(Modifier.width(18.dp))
                     LanguageMenuChip(language, onLanguageChange)
                     Spacer(Modifier.width(18.dp))
-                    UserChip(username, showName = true)
+                    UserChip(username, showName = true, onClick = onOpenProfile)
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -448,7 +452,7 @@ private fun TopBar(
                     Spacer(Modifier.weight(1f))
                     LanguageMenuChip(language, onLanguageChange)
                     Spacer(Modifier.width(10.dp))
-                    UserChip(username, showName = showName)
+                    UserChip(username, showName = showName, onClick = onOpenProfile)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -541,8 +545,14 @@ private fun HeaderLink(text: String, onClick: () -> Unit, icon: @Composable () -
 }
 
 @Composable
-private fun UserChip(username: String, showName: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun UserChip(username: String, showName: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         AvatarCircle(initial = username, size = 40.dp)
         if (showName) {
             Text(
