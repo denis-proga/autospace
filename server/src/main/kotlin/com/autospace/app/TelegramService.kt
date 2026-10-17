@@ -222,6 +222,8 @@ private const val HELP_TEXT = "Команды:\n" +
         "/demo_reset <id> — вернуть бесплатные тесты\n" +
         "/delete <id> — удалить пользователя\n" +
         "/orders — заказы, ждущие оплаты\n" +
+        "/away on [дата] — я в отъезде: оплата закрыта, прежним пользователям все тесты бесплатно\n" +
+        "/away off — вернулся, всё как обычно\n" +
         "/paid <код или id> — подтвердить, что деньги пришли\n" +
         "/tickets — открытые обращения\n" +
         "/reply <id> <текст> — ответить на обращение\n" +
@@ -281,6 +283,32 @@ suspend fun startTelegramListener() {
                         }
 
                         "/orders" -> TelegramService.sendPlainMessage(PaymentOrders.pendingList())
+                        "/away" -> {
+                            when (parts.getOrNull(1)?.lowercase()) {
+                                "on" -> {
+                                    val until = parts.drop(2).joinToString(" ").trim()
+                                    AwayMode.turnOn(until)
+                                    val tail = if (until.isEmpty()) "без даты возвращения" else "до $until"
+                                    TelegramService.sendPlainMessage(
+                                        "🌴 Режим отъезда включён ($tail).\n" +
+                                            "Оплата закрыта, прежним пользователям открыты все тесты.\n" +
+                                            "Выключить: /away off"
+                                    )
+                                }
+                                "off" -> {
+                                    AwayMode.turnOff()
+                                    TelegramService.sendPlainMessage("✅ Режим отъезда выключен, всё работает как обычно")
+                                }
+                                else -> {
+                                    val state = AwayMode.state()
+                                    val now = if (state.enabled) {
+                                        val tail = if (state.until.isEmpty()) "без даты" else "до ${state.until}"
+                                        "сейчас включён ($tail)"
+                                    } else "сейчас выключен"
+                                    TelegramService.sendPlainMessage("Режим отъезда $now.\nФормат: /away on 25.10 или /away off")
+                                }
+                            }
+                        }
                         "/paid" -> {
                             val codeArg = parts.getOrNull(1)?.trim().orEmpty()
                             if (codeArg.isEmpty()) {

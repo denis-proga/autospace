@@ -149,6 +149,8 @@ data class SessionRequest(
 @Serializable
 data class LicenseInfo(
     val status: String,
+    // доступ открыт как подарок на время отъезда админа: платить сейчас не нужно
+    val giftAccess: Boolean = false,
     val expiresAt: Long? = null,
     val demoLimit: Int,
     val demoTests: List<Int> = emptyList(),
@@ -164,7 +166,10 @@ data class PlanDto(
 @Serializable
 data class PlansResponse(
     val plans: List<PlanDto>,
-    val paymentInstructions: String
+    val paymentInstructions: String,
+    // режим отъезда: оплату принять некому, у прежних пользователей доступ открыт как подарок
+    val awayMode: Boolean = false,
+    val awayUntil: String = ""
 )
 
 @Serializable
@@ -196,6 +201,7 @@ data class PaymentDetailsDto(
 data class PaymentOrderResponse(
     val success: Boolean,
     val code: String = "",
+    val awayUntil: String = "",
     val order: PaymentOrderDto? = null,
     val details: PaymentDetailsDto? = null,
     val license: LicenseInfo? = null

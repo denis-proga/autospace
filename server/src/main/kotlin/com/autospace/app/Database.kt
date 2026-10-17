@@ -27,7 +27,20 @@ object Users : Table("users") {
     // SHA-256 от нормализованной почты: один человек = один набор бесплатных тестов
     val emailKey = varchar("email_key", 64).nullable()
 
+    // момент регистрации: нужен режиму отъезда, чтобы подарок получили только прежние пользователи
+    val createdAt = long("created_at").nullable()
+
     override val primaryKey = PrimaryKey(id)
+}
+
+/** Настройки, которые меняются на ходу (режим отъезда). Ключ — значение плюс произвольное поле. */
+object AppSettings : Table("app_settings") {
+    val key = varchar("key", 50).uniqueIndex()
+    val value = varchar("value", 100)
+    val extra = varchar("extra", 200).nullable()
+    val updatedAt = long("updated_at")
+
+    override val primaryKey = PrimaryKey(key)
 }
 
 /**
@@ -200,11 +213,19 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims, UserAnswers, SupportTickets)
+        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims, UserAnswers, SupportTickets, AppSettings)
 
         // Статуса PENDING больше нет: новый пользователь сразу получает демо
         Users.update({ Users.licenseStatus eq "PENDING" }) {
             it[Users.licenseStatus] = "DEMO"
+        }
+
+        // Старым пользователям проставляем дату регистрации: они зарегистрированы до любого будущего отъезда
+        val now = System.currentTimeMillis()
+        Users.selectAll().filter { it[Users.createdAt] == null }.forEach { row ->
+            Users.update({ Users.id eq row[Users.id] }) {
+                it[Users.createdAt] = now
+            }
         }
 
         // Старым пользователям дописываем email_key (хеш нормализованной почты)

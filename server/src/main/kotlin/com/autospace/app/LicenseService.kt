@@ -126,6 +126,7 @@ object LicenseService {
 
         return LicenseInfo(
             status = user.status,
+            giftAccess = AwayMode.giftAccess(user.id),
             expiresAt = user.expiresAt,
             demoLimit = DEMO_TEST_LIMIT,
             demoTests = demoTests(user.emailKey),
@@ -142,6 +143,8 @@ object LicenseService {
     fun requestTestAccess(user: AuthUser, testNumber: Int): TestAccess {
         if (user.status == "BLOCKED") return TestAccess.Blocked
         if (hasFullAccess(user.status)) return TestAccess.Granted
+        // пока админ в отъезде, прежние пользователи получают все тесты как подарок
+        if (AwayMode.giftAccess(user.id)) return TestAccess.Granted
 
         return transaction<TestAccess> {
             // блокируем строку пользователя, чтобы два запроса одновременно не заняли три слота
@@ -178,6 +181,7 @@ object LicenseService {
     fun canSaveProgress(user: AuthUser, testNumber: Int): Boolean {
         if (user.status == "BLOCKED") return false
         if (hasFullAccess(user.status)) return true
+        if (AwayMode.giftAccess(user.id)) return true
         return testNumber in demoTests(user.emailKey) || hasProgress(user.id, testNumber)
     }
 }

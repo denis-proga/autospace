@@ -302,6 +302,7 @@ fun Application.module() {
                     it[Users.passwordHash] = hashPassword(pending.password)
                     it[Users.licenseStatus] = "DEMO"
                     it[Users.licenseExpiresAt] = null
+                    it[Users.createdAt] = System.currentTimeMillis()
                     it[Users.emailKey] = pendingEmailKey
                 }[Users.id]
             }
@@ -593,7 +594,15 @@ fun Application.module() {
         get("/plans") {
             call.requireUser() ?: return@get
             val instructions = readSetting("PAYMENT_INSTRUCTIONS").replace("\\n", "\n")
-            call.respond(PlansResponse(plans = LicenseService.PLANS, paymentInstructions = instructions))
+            val away = AwayMode.state()
+            call.respond(
+                PlansResponse(
+                    plans = LicenseService.PLANS,
+                    paymentInstructions = instructions,
+                    awayMode = away.enabled,
+                    awayUntil = away.until
+                )
+            )
         }
 
         // Создать заказ на оплату (до перевода денег). Повторный вызов возвращает тот же активный заказ.
@@ -604,6 +613,12 @@ fun Application.module() {
             val plan = LicenseService.PLANS.firstOrNull { it.days == request.days }
             if (plan == null) {
                 call.respond(HttpStatusCode.BadRequest, ApiError(success = false, code = "BAD_REQUEST", message = "Unknown plan"))
+                return@post
+            }
+
+            // пока админ в отъезде, подтвердить перевод некому: заказ не создаём
+            if (AwayMode.isOn()) {
+                call.respond(PaymentOrderResponse(success = false, code = "AWAY", awayUntil = AwayMode.state().until))
                 return@post
             }
 
