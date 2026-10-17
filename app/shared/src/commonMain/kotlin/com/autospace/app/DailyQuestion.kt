@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 
 /** Состояние вопроса дня: храним снаружи экрана, чтобы карточка на главной знала, отвечен ли он. */
@@ -70,10 +71,13 @@ internal fun DailyQuestionDialog(language: String, onDismiss: () -> Unit) {
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val shape = RoundedCornerShape(24.dp)
+        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier
+                // на узком окне диалог прижимаем к ширине экрана, иначе он уезжает за край
+                .fillMaxWidth()
                 .widthIn(max = 520.dp)
                 .clip(shape)
                 .background(Brush.verticalGradient(listOf(Color(0xFF1A2480), Color(0xFF0C1456))))
@@ -231,6 +235,7 @@ internal fun DailyQuestionDialog(language: String, onDismiss: () -> Unit) {
                     )
                 }
             }
+        }
         }
     }
 }

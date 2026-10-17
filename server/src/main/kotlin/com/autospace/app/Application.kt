@@ -509,7 +509,8 @@ fun Application.module() {
                     .where { (DailyAnswers.userId eq user.id) and (DailyAnswers.day eq day) }
                     .singleOrNull()
 
-                Triple(row, answer?.get(DailyAnswers.chosenOption), answer?.get(DailyAnswers.correct))
+                // ResultRow читаем только внутри транзакции: снаружи Exposed бросает «No transaction in context»
+                Triple(buildQuestion(row, lang), answer?.get(DailyAnswers.chosenOption), answer?.get(DailyAnswers.correct))
             }
 
             if (payload == null) {
@@ -517,8 +518,7 @@ fun Application.module() {
                 return@get
             }
 
-            val (row, chosen, wasCorrect) = payload
-            val question = buildQuestion(row, lang)
+            val (question, chosen, wasCorrect) = payload
             // пока человек не ответил, верный вариант и пояснение не отдаём
             val hidden = question.copy(correctOption = "", explanation = "")
 
@@ -554,7 +554,7 @@ fun Application.module() {
 
                 // повторный ответ не принимаем: возвращаем тот, что уже сохранён
                 if (existing != null) {
-                    return@transaction Triple(row, existing[DailyAnswers.chosenOption], existing[DailyAnswers.correct])
+                    return@transaction Triple(buildQuestion(row, lang), existing[DailyAnswers.chosenOption], existing[DailyAnswers.correct])
                 }
 
                 val chosen = request.option.trim().uppercase().take(1)
@@ -567,7 +567,7 @@ fun Application.module() {
                     it[DailyAnswers.correct] = isCorrect
                     it[DailyAnswers.answeredAt] = System.currentTimeMillis()
                 }
-                Triple(row, chosen, isCorrect)
+                Triple(buildQuestion(row, lang), chosen, isCorrect)
             }
 
             if (payload == null) {
@@ -575,11 +575,11 @@ fun Application.module() {
                 return@post
             }
 
-            val (row, chosen, isCorrect) = payload
+            val (question, chosen, isCorrect) = payload
             call.respond(
                 DailyQuestionResponse(
                     found = true,
-                    question = buildQuestion(row, lang),
+                    question = question,
                     answered = true,
                     chosenOption = chosen.orEmpty(),
                     correct = isCorrect == true
