@@ -10,6 +10,11 @@ on:
       - '*.kts'
       - '.github/workflows/build-web.yml'
   workflow_dispatch:
+    inputs:
+      binaryen_version:
+        description: 'Версия Binaryen для wasm-opt (например 124, 126, 127)'
+        required: false
+        default: '124'
 
 permissions:
   contents: write
@@ -27,23 +32,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # wasm-opt (Binaryen) падал с кодом 139 (segmentation fault) на большом бинарнике.
-      # Даём ему больше памяти (swap) и снимаем ограничение стека.
-      - name: Add swap space
-        run: |
-          sudo swapoff -a || true
-          sudo fallocate -l 10G /mnt/swapfile
-          sudo chmod 600 /mnt/swapfile
-          sudo mkswap /mnt/swapfile
-          sudo swapon /mnt/swapfile
-          free -h
-
+      # wasm-opt из Binaryen 125 (версия по умолчанию в Kotlin 2.4.10) падает на CI с кодом 139.
+      # Версия задаётся параметром: при ручном запуске (Run workflow) её можно поменять без правки кода.
       - name: Build web distribution
         run: |
           chmod +x gradlew
-          ulimit -s unlimited || ulimit -s 1048576 || true
-          echo "stack limit: $(ulimit -s)"
-          ./gradlew :app:webApp:wasmJsBrowserDistribution --no-daemon
+          ./gradlew :app:webApp:wasmJsBrowserDistribution --no-daemon -PbinaryenVersion=${{ inputs.binaryen_version || '124' }}
 
       - name: Publish to web-dist branch
         run: |
