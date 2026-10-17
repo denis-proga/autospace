@@ -488,6 +488,105 @@ fun Application.module() {
             call.respond(AuthResponse(success = true, message = "Progress saved"))
         }
 
+        // Вопрос дня: один и тот же для всех, выбирается по дате, отвечать можно раз в сутки.
+        // Доступен и на бесплатном тарифе: это ежедневный повод вернуться, а не часть платного доступа.
+        get("/daily-question") {
+            val user = call.requireUser() ?: return@get
+            val lang = call.request.queryParameters["lang"] ?: "ru"
+            val day = System.currentTimeMillis() / 86_400_000L
+
+            val payload = transaction {
+                val ids = Questions.select(Questions.id).map { it[Questions.id] }.sorted()
+                if (ids.isEmpty()) return@transaction null
+
+                // одно и то же число для всех в этот день, но разные вопросы в разные дни
+                val index = ((day * 2654435761L) % ids.size).toInt().let { if (it < 0) it + ids.size else it }
+                val questionId = ids[index]
+                val row = Questions.selectAll().where { Questions.id eq questionId }.singleOrNull()
+                    ?: return@transaction null
+
+                val answer = DailyAnswers.selectAll()
+                    .where { (DailyAnswers.userId eq user.id) and (DailyAnswers.day eq day) }
+                    .singleOrNull()
+
+                Triple(row, answer?.get(DailyAnswers.chosenOption), answer?.get(DailyAnswers.correct))
+            }
+
+            if (payload == null) {
+                call.respond(DailyQuestionResponse(found = false))
+                return@get
+            }
+
+            val (row, chosen, wasCorrect) = payload
+            val question = buildQuestion(row, lang)
+            // пока человек не ответил, верный вариант и пояснение не отдаём
+            val hidden = question.copy(correctOption = "", explanation = "")
+
+            call.respond(
+                DailyQuestionResponse(
+                    found = true,
+                    question = if (chosen == null) hidden else question,
+                    answered = chosen != null,
+                    chosenOption = chosen.orEmpty(),
+                    correct = wasCorrect == true
+                )
+            )
+        }
+
+        post("/daily-question") {
+            val user = call.requireUser() ?: return@post
+            val lang = call.request.queryParameters["lang"] ?: "ru"
+            val request = call.receive<DailyAnswerRequest>()
+            val day = System.currentTimeMillis() / 86_400_000L
+
+            val payload = transaction {
+                val ids = Questions.select(Questions.id).map { it[Questions.id] }.sorted()
+                if (ids.isEmpty()) return@transaction null
+
+                val index = ((day * 2654435761L) % ids.size).toInt().let { if (it < 0) it + ids.size else it }
+                val questionId = ids[index]
+                val row = Questions.selectAll().where { Questions.id eq questionId }.singleOrNull()
+                    ?: return@transaction null
+
+                val existing = DailyAnswers.selectAll()
+                    .where { (DailyAnswers.userId eq user.id) and (DailyAnswers.day eq day) }
+                    .singleOrNull()
+
+                // повторный ответ не принимаем: возвращаем тот, что уже сохранён
+                if (existing != null) {
+                    return@transaction Triple(row, existing[DailyAnswers.chosenOption], existing[DailyAnswers.correct])
+                }
+
+                val chosen = request.option.trim().uppercase().take(1)
+                val isCorrect = chosen == row[Questions.correctOption]
+                DailyAnswers.insert {
+                    it[DailyAnswers.userId] = user.id
+                    it[DailyAnswers.day] = day
+                    it[DailyAnswers.questionId] = questionId
+                    it[DailyAnswers.chosenOption] = chosen
+                    it[DailyAnswers.correct] = isCorrect
+                    it[DailyAnswers.answeredAt] = System.currentTimeMillis()
+                }
+                Triple(row, chosen, isCorrect)
+            }
+
+            if (payload == null) {
+                call.respond(DailyQuestionResponse(found = false))
+                return@post
+            }
+
+            val (row, chosen, isCorrect) = payload
+            call.respond(
+                DailyQuestionResponse(
+                    found = true,
+                    question = buildQuestion(row, lang),
+                    answered = true,
+                    chosenOption = chosen.orEmpty(),
+                    correct = isCorrect == true
+                )
+            )
+        }
+
         // Последний незавершённый тест: для блока «Продолжить» на главной.
         // Завершённые тесты из test_progress удаляются, поэтому здесь остаются только начатые.
         get("/progress/latest") {

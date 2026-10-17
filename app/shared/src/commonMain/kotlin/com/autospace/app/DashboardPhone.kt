@@ -62,6 +62,7 @@ internal fun PhoneDashboard(
     onOpenProfile: () -> Unit,
     continueProgress: LatestProgressDto?,
     onContinue: (LatestProgressDto) -> Unit,
+    onDailyQuestion: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenPaywall: () -> Unit,
     toastVisible: Boolean,
@@ -82,7 +83,7 @@ internal fun PhoneDashboard(
             PhoneStrip()
             if (continueProgress != null) PhoneContinue(continueProgress, onContinue)
             PhoneTests(tests, mode, onModeChange, stateFor, onTileClick, onResetAll)
-            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose)
+            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion)
             Spacer(Modifier.height(12.dp))
         }
     }
@@ -465,13 +466,13 @@ private fun PhoneTests(
 // ------------------------------------------------------------------------------------------
 
 @Composable
-private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit) {
+private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQuestion: () -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         PhoneRow(icon = { BulbIcon(22.dp) }, title = strings.dashQuestionOfDay, subtitle = strings.dashQuestionOfDaySub) {
-            PanelButton(strings.dashAnswer, onClick = { }, dense = true)
+            PanelButton(strings.dashAnswer, onClick = onDailyQuestion, dense = true)
         }
 
         PhoneRow(icon = { TrophyIcon(22.dp) }, title = strings.dashWeeklyRating, subtitle = null, extra = {

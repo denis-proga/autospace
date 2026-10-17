@@ -36,6 +36,22 @@ object Users : Table("users") {
     override val primaryKey = PrimaryKey(id)
 }
 
+/** Ответы на «вопрос дня»: один ответ в сутки на пользователя. day — номер дня по UTC. */
+object DailyAnswers : Table("daily_answers") {
+    val id = integer("id").autoIncrement()
+    val userId = integer("user_id").references(Users.id)
+    val day = long("day")
+    val questionId = integer("question_id")
+    val chosenOption = varchar("chosen_option", 1)
+    val correct = bool("correct")
+    val answeredAt = long("answered_at")
+
+    override val primaryKey = PrimaryKey(id)
+    init {
+        uniqueIndex(userId, day)
+    }
+}
+
 /** Настройки, которые меняются на ходу (режим отъезда). Ключ — значение плюс произвольное поле. */
 object AppSettings : Table("app_settings") {
     val key = varchar("key", 50).uniqueIndex()
@@ -216,7 +232,7 @@ fun initDatabase() {
     }
 
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims, UserAnswers, SupportTickets, AppSettings)
+        SchemaUtils.createMissingTablesAndColumns(Users, TestResults, Questions, TestProgress, DemoSlots, PaymentClaims, UserAnswers, SupportTickets, AppSettings, DailyAnswers)
 
         // Статуса PENDING больше нет: новый пользователь сразу получает демо
         Users.update({ Users.licenseStatus eq "PENDING" }) {

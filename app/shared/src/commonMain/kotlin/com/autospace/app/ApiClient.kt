@@ -183,6 +183,21 @@ data class PlansResponseDto(
     val awayUntil: String = ""
 )
 
+/** Вопрос дня: один и тот же для всех, меняется раз в сутки. */
+@Serializable
+data class DailyQuestionDto(
+    val found: Boolean,
+    val question: QuestionDto? = null,
+    val answered: Boolean = false,
+    val chosenOption: String = "",
+    val correct: Boolean = false
+)
+
+@Serializable
+data class DailyAnswerRequestDto(
+    val option: String
+)
+
 /** Последний незавершённый тест для блока «Продолжить». */
 @Serializable
 data class LatestProgressDto(
@@ -472,6 +487,22 @@ object ApiClient {
 
     suspend fun getPlans(): PlansResponseDto {
         val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun getDailyQuestion(lang: String): DailyQuestionDto {
+        val response = client.get("$BASE_URL/daily-question?lang=$lang") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun answerDailyQuestion(option: String, lang: String): DailyQuestionDto {
+        val response = client.post("$BASE_URL/daily-question?lang=$lang") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(DailyAnswerRequestDto(option))
+        }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

@@ -306,3 +306,19 @@ data class LatestProgressResponse(
     val answered: Int = 0,
     val updatedAt: Long = 0L
 )
+
+/** Вопрос дня: один и тот же для всех, меняется раз в сутки. */
+@Serializable
+data class DailyQuestionResponse(
+    val found: Boolean,
+    val question: QuestionResponse? = null,
+    val answered: Boolean = false,
+    val chosenOption: String = "",
+    val correct: Boolean = false,
+    val streak: Int = 0
+)
+
+@Serializable
+data class DailyAnswerRequest(
+    val option: String
+)

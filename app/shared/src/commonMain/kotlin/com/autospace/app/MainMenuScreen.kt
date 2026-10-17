@@ -142,6 +142,7 @@ private fun MainMenuContent(
     var license by remember { mutableStateOf<LicenseInfoDto?>(null) }
     var toastVisible by remember { mutableStateOf(PreviewData.SHOW) }
     var continueProgress by remember { mutableStateOf<LatestProgressDto?>(null) }
+    var showDailyQuestion by remember { mutableStateOf(false) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
@@ -217,6 +218,7 @@ private fun MainMenuContent(
                 onOpenProfile = onOpenProfile,
                 continueProgress = continueProgress,
                 onContinue = { onContinueClick(it) },
+                onDailyQuestion = { showDailyQuestion = true },
                 onOpenStats = onOpenStats,
                 onOpenPaywall = onOpenPaywall,
                 toastVisible = toastVisible,
@@ -263,7 +265,7 @@ private fun MainMenuContent(
                         Column(modifier = Modifier.weight(1f)) { centerContent() }
                         Column(modifier = Modifier.width(372.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
-                            QuestionPanel()
+                            QuestionPanel(onAnswer = { showDailyQuestion = true })
                             RatingPanel()
                             MistakesPanel()
                         }
@@ -281,7 +283,7 @@ private fun MainMenuContent(
                     Column(modifier = Modifier.weight(1f)) { centerContent() }
                     Column(modifier = Modifier.width(340.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
-                        QuestionPanel()
+                        QuestionPanel(onAnswer = { showDailyQuestion = true })
                         RatingPanel()
                         MistakesPanel()
                     }
@@ -300,7 +302,7 @@ private fun MainMenuContent(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
-                                QuestionPanel()
+                                QuestionPanel(onAnswer = { showDailyQuestion = true })
                             }
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 RatingPanel()
@@ -321,7 +323,7 @@ private fun MainMenuContent(
                     centerContent()
                     if (PreviewData.SHOW || continueProgress != null) {
                         Spacer(Modifier.height(10.dp))
-                        SideCards(continueProgress, onContinue = { onContinueClick(it) })
+                        SideCards(continueProgress, onContinue = { onContinueClick(it) }, onDailyQuestion = { showDailyQuestion = true })
                         if (toastVisible) {
                             Spacer(Modifier.height(14.dp))
                             AchievementToast(onClose = { toastVisible = false })
@@ -331,6 +333,10 @@ private fun MainMenuContent(
                 }
             }
         }
+        }
+
+        if (showDailyQuestion) {
+            DailyQuestionDialog(language = language.code, onDismiss = { showDailyQuestion = false })
         }
 
         if (layout != DashLayout.Compact && PreviewData.SHOW && toastVisible) {
@@ -1049,8 +1055,7 @@ private fun ContinuePanel(progress: LatestProgressDto?, onContinue: (LatestProgr
 }
 
 @Composable
-private fun QuestionPanel() {
-    if (!PreviewData.SHOW) return
+private fun QuestionPanel(onAnswer: () -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     DashPanel {
@@ -1062,7 +1067,7 @@ private fun QuestionPanel() {
             }
             TargetIcon(54.dp, color = Dash.Ring.copy(alpha = 0.6f))
         }
-        PanelButton(strings.dashAnswer, onClick = { }, modifier = Modifier.padding(top = 14.dp).fillMaxWidth(0.82f))
+        PanelButton(strings.dashAnswer, onClick = onAnswer, modifier = Modifier.padding(top = 14.dp).fillMaxWidth(0.82f))
     }
 }
 
@@ -1116,7 +1121,7 @@ private fun MistakesPanel() {
 
 /** Телефон: те же блоки в виде компактных строк. */
 @Composable
-private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressDto) -> Unit) {
+private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressDto) -> Unit, onDailyQuestion: () -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
@@ -1141,7 +1146,7 @@ private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressD
 
     if (!PreviewData.SHOW) return
     CompactRow(icon = { BulbIcon(30.dp) }, title = strings.dashQuestionOfDay, subtitle = strings.dashQuestionOfDaySub) {
-        PanelButton(strings.dashAnswer, onClick = { }, modifier = Modifier.height(38.dp))
+        PanelButton(strings.dashAnswer, onClick = onDailyQuestion, modifier = Modifier.height(38.dp))
     }
     CompactRow(icon = { TrophyIcon(30.dp) }, title = strings.dashWeeklyRating, subtitle = null, extra = {
         // три участника делят ширину поровну, чтобы имена не рвались по буквам
