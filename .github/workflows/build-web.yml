@@ -12,9 +12,14 @@ on:
   workflow_dispatch:
     inputs:
       binaryen_version:
-        description: 'Версия Binaryen для wasm-opt (например 124, 126, 127)'
+        description: 'Версия Binaryen для wasm-opt (например 124, 125, 126)'
         required: false
-        default: '124'
+        default: '125'
+      wasm_opt_mode:
+        description: 'Оптимизация wasm-opt: full (по умолчанию в Kotlin), light (только -O2), none (без оптимизаций)'
+        type: choice
+        options: [light, full, none]
+        default: light
 
 permissions:
   contents: write
@@ -32,12 +37,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # wasm-opt из Binaryen 125 (версия по умолчанию в Kotlin 2.4.10) падает на CI с кодом 139.
-      # Версия задаётся параметром: при ручном запуске (Run workflow) её можно поменять без правки кода.
+      # wasm-opt (Binaryen) падает на CI с кодом 139 на полном наборе оптимизаций (проверено на 124 и 125).
+      # Версию и режим оптимизации можно менять при ручном запуске (Run workflow) без правки кода.
       - name: Build web distribution
         run: |
           chmod +x gradlew
-          ./gradlew :app:webApp:wasmJsBrowserDistribution --no-daemon -PbinaryenVersion=${{ inputs.binaryen_version || '124' }}
+          ./gradlew :app:webApp:wasmJsBrowserDistribution --no-daemon -PbinaryenVersion=${{ inputs.binaryen_version || '125' }} -PwasmOptMode=${{ inputs.wasm_opt_mode || 'light' }}
 
       - name: Publish to web-dist branch
         run: |
