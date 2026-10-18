@@ -141,13 +141,16 @@ private fun MainMenuContent(
     var refreshTrigger by remember { mutableStateOf(0) }
     var alreadyCompletedTestNumber by remember { mutableStateOf<Int?>(null) }
     var license by remember { mutableStateOf<LicenseInfoDto?>(null) }
-    var toastVisible by remember { mutableStateOf(PreviewData.SHOW) }
+    var toastVisible by remember { mutableStateOf(false) }
     var continueProgress by remember { mutableStateOf<LatestProgressDto?>(null) }
     var showDailyQuestion by remember { mutableStateOf(false) }
     var leaderboard by remember { mutableStateOf<LeaderboardDto?>(null) }
     var showFullRating by remember { mutableStateOf(false) }
     var mistakesCount by remember { mutableStateOf(0) }
     var summary by remember { mutableStateOf<ProgressSummaryDto?>(null) }
+    var achievements by remember { mutableStateOf<AchievementsDto?>(null) }
+    var showAchievements by remember { mutableStateOf(false) }
+    var newAchievement by remember { mutableStateOf<String?>(null) }
     var showMistakes by remember { mutableStateOf(false) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
@@ -170,6 +173,13 @@ private fun MainMenuContent(
         }
         try {
             summary = ApiClient.getProgressSummary()
+        } catch (e: Exception) {
+        }
+        try {
+            val response = ApiClient.getAchievements()
+            achievements = response
+            newAchievement = response.newlyUnlocked.firstOrNull()
+            toastVisible = newAchievement != null
         } catch (e: Exception) {
         }
         try {
@@ -242,6 +252,9 @@ private fun MainMenuContent(
                 mistakesCount = mistakesCount,
                 onMistakes = { showMistakes = true },
                 summary = summary,
+                achievementsSubtitle = achievements?.let { "${it.unlockedCount} / ${it.achievements.size}" },
+                onAchievements = { showAchievements = true },
+                newAchievementName = newAchievement?.let { achievementStrings(strings).title(it) }.orEmpty(),
                 onOpenStats = onOpenStats,
                 onOpenPaywall = onOpenPaywall,
                 toastVisible = toastVisible,
@@ -347,6 +360,7 @@ private fun MainMenuContent(
                     if (PreviewData.SHOW || continueProgress != null) {
                         Spacer(Modifier.height(10.dp))
                         SideCards(
+                            onAchievements = { showAchievements = true },
                             progress = continueProgress,
                             onContinue = { onContinueClick(it) },
                             onDailyQuestion = { showDailyQuestion = true },
@@ -357,13 +371,24 @@ private fun MainMenuContent(
                         )
                         if (toastVisible) {
                             Spacer(Modifier.height(14.dp))
-                            AchievementToast(onClose = { toastVisible = false })
+                            AchievementToast(
+                                name = newAchievement?.let { achievementStrings(strings).title(it) }.orEmpty(),
+                                onClose = {
+                                    toastVisible = false
+                                    val id = newAchievement
+                                    if (id != null) scope.launch { runCatching { ApiClient.markAchievementsSeen(listOf(id)) } }
+                                }
+                            )
                         }
                     }
                     Spacer(Modifier.height(24.dp))
                 }
             }
         }
+        }
+
+        if (showAchievements) {
+            AchievementsDialog(onDismiss = { showAchievements = false })
         }
 
         if (showMistakes) {
@@ -382,9 +407,14 @@ private fun MainMenuContent(
             DailyQuestionDialog(language = language.code, onDismiss = { showDailyQuestion = false })
         }
 
-        if (layout != DashLayout.Compact && PreviewData.SHOW && toastVisible) {
+        if (layout != DashLayout.Compact && toastVisible) {
             AchievementToast(
-                onClose = { toastVisible = false },
+                name = newAchievement?.let { achievementStrings(strings).title(it) }.orEmpty(),
+                onClose = {
+                    toastVisible = false
+                    val id = newAchievement
+                    if (id != null) scope.launch { runCatching { ApiClient.markAchievementsSeen(listOf(id)) } }
+                },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).widthIn(max = 340.dp)
             )
         }
@@ -1210,6 +1240,7 @@ private fun MistakesPanel(count: Int, onRepeat: () -> Unit) {
 /** Телефон: те же блоки в виде компактных строк. */
 @Composable
 private fun SideCards(
+    onAchievements: () -> Unit,
     progress: LatestProgressDto?,
     onContinue: (LatestProgressDto) -> Unit,
     onDailyQuestion: () -> Unit,
@@ -1276,7 +1307,7 @@ private fun SideCards(
     if (mistakesCount > 0) CompactRow(icon = { TargetIcon(30.dp) }, title = strings.dashMistakes, subtitle = strings.dashMistakesCount(mistakesCount)) {
         PanelButton(strings.dashRepeat, onClick = onMistakes, modifier = Modifier.height(38.dp))
     }
-    CompactRow(icon = { MedalIcon(30.dp) }, title = strings.dashAchievements, subtitle = null, extra = {
+    CompactRow(icon = { MedalIcon(30.dp) }, title = strings.dashAchievements, subtitle = null, onClick = onAchievements, extra = {
         Row(modifier = Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BadgeCircle(Brand.Yellow) { StarIcon(Brand.Yellow, 18.dp, filled = true) }
             BadgeCircle(Dash.Blue) { TrophyIcon(18.dp) }
@@ -1345,7 +1376,7 @@ private fun BadgeCircle(ring: Color, icon: @Composable () -> Unit) {
 }
 
 @Composable
-private fun AchievementToast(onClose: () -> Unit, modifier: Modifier = Modifier) {
+private fun AchievementToast(name: String, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     val shape = RoundedCornerShape(18.dp)
@@ -1364,7 +1395,7 @@ private fun AchievementToast(onClose: () -> Unit, modifier: Modifier = Modifier)
         ) { StarIcon(Brand.Yellow, 24.dp, filled = true) }
         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
             Text(strings.dashNewAchievement, fontFamily = interFamily, fontSize = 12.sp, color = Dash.Text2)
-            Text(strings.dashAchievementName, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+            Text(name, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
         }
         Box(
             modifier = Modifier

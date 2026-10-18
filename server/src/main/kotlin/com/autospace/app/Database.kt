@@ -33,6 +33,9 @@ object Users : Table("users") {
     // выбранный аватар: «avatar_1».. «avatar_6» или пусто
     val avatar = varchar("avatar", 20).nullable()
 
+    // достижения, которые человек уже видел: идентификаторы через запятую
+    val seenAchievements = text("seen_achievements").nullable()
+
     override val primaryKey = PrimaryKey(id)
 }
 

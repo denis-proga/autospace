@@ -491,6 +491,78 @@ fun Application.module() {
             call.respond(AuthResponse(success = true, message = "Progress saved"))
         }
 
+        // Достижения: считаются из результатов, ответов и вопроса дня, отдельных начислений нет.
+        get("/achievements") {
+            val user = call.requireUser() ?: return@get
+
+            val data = transaction {
+                val results = TestResults.selectAll().where { TestResults.userId eq user.id }.toList()
+                val passedTests = results
+                    .filter { it[TestResults.totalQuestions] > 0 && it[TestResults.correctCount] * 100 / it[TestResults.totalQuestions] >= 90 }
+                    .map { it[TestResults.testNumber] }
+                    .distinct()
+                    .size
+                val perfectExam = results.any {
+                    it[TestResults.mode] == "EXAM" && it[TestResults.totalQuestions] > 0 &&
+                        it[TestResults.correctCount] == it[TestResults.totalQuestions]
+                }
+                val correctTotal = results.sumOf { it[TestResults.correctCount] }
+                val dailyCorrect = DailyAnswers
+                    .selectAll()
+                    .where { (DailyAnswers.userId eq user.id) and (DailyAnswers.correct eq true) }
+                    .count()
+                    .toInt()
+                val mistakesLeft = UserAnswers
+                    .selectAll()
+                    .where { (UserAnswers.userId eq user.id) and (UserAnswers.lastCorrect eq false) }
+                    .count()
+                    .toInt()
+                val answeredAny = UserAnswers.selectAll().where { UserAnswers.userId eq user.id }.count().toInt()
+                val seen = Users.selectAll().where { Users.id eq user.id }.singleOrNull()
+                    ?.get(Users.seenAchievements).orEmpty()
+
+                listOf(
+                    AchievementDto("first_test", results.isNotEmpty(), minOf(results.size, 1), 1),
+                    AchievementDto("tests_10", passedTests >= 10, minOf(passedTests, 10), 10),
+                    AchievementDto("tests_all", passedTests >= 50, minOf(passedTests, 50), 50),
+                    AchievementDto("perfect_exam", perfectExam, if (perfectExam) 1 else 0, 1),
+                    AchievementDto("correct_500", correctTotal >= 500, minOf(correctTotal, 500), 500),
+                    AchievementDto("daily_10", dailyCorrect >= 10, minOf(dailyCorrect, 10), 10),
+                    AchievementDto("no_mistakes", answeredAny > 0 && mistakesLeft == 0, if (answeredAny > 0 && mistakesLeft == 0) 1 else 0, 1)
+                ) to seen
+            }
+
+            val (achievements, seenRaw) = data
+            val seen = seenRaw.split(",").filter { it.isNotBlank() }.toSet()
+            val unlocked = achievements.filter { it.unlocked }
+
+            call.respond(
+                AchievementsResponse(
+                    achievements = achievements,
+                    unlockedCount = unlocked.size,
+                    newlyUnlocked = unlocked.map { it.id }.filterNot { seen.contains(it) }
+                )
+            )
+        }
+
+        // Отметить достижения как показанные, чтобы плашка «Новое достижение» не появлялась снова.
+        post("/achievements/seen") {
+            val user = call.requireUser() ?: return@post
+            val request = call.receive<SeenAchievementsRequest>()
+
+            transaction {
+                val current = Users.selectAll().where { Users.id eq user.id }.singleOrNull()
+                    ?.get(Users.seenAchievements).orEmpty()
+                    .split(",").filter { it.isNotBlank() }.toMutableSet()
+                current.addAll(request.ids)
+                Users.update({ Users.id eq user.id }) {
+                    it[Users.seenAchievements] = current.joinToString(",")
+                }
+            }
+
+            call.respond(AchievementsResponse())
+        }
+
         // Уровень, опыт и серия дней подряд.
         // Опыт — верные ответы во всех тестах; серия — дни подряд с тестом или вопросом дня.
         get("/progress-summary") {

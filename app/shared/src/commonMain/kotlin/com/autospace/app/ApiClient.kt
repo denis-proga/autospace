@@ -183,6 +183,27 @@ data class PlansResponseDto(
     val awayUntil: String = ""
 )
 
+/** Достижение: подпись берётся по id на клиенте. */
+@Serializable
+data class AchievementDto(
+    val id: String,
+    val unlocked: Boolean = false,
+    val progress: Int = 0,
+    val goal: Int = 1
+)
+
+@Serializable
+data class AchievementsDto(
+    val achievements: List<AchievementDto> = emptyList(),
+    val unlockedCount: Int = 0,
+    val newlyUnlocked: List<String> = emptyList()
+)
+
+@Serializable
+data class SeenAchievementsRequestDto(
+    val ids: List<String>
+)
+
 /** Уровень, опыт и серия дней. */
 @Serializable
 data class ProgressSummaryDto(
@@ -539,6 +560,20 @@ object ApiClient {
         val response = client.get("$BASE_URL/plans") { auth() }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
+    }
+
+    suspend fun getAchievements(): AchievementsDto {
+        val response = client.get("$BASE_URL/achievements") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun markAchievementsSeen(ids: List<String>) {
+        client.post("$BASE_URL/achievements/seen") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(SeenAchievementsRequestDto(ids))
+        }
     }
 
     suspend fun getProgressSummary(): ProgressSummaryDto {

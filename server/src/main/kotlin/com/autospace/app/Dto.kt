@@ -372,3 +372,24 @@ data class ProgressSummaryResponse(
     val levelGoal: Int,
     val streak: Int
 )
+
+/** Достижение: id для подписи на клиенте, прогресс и цель. */
+@Serializable
+data class AchievementDto(
+    val id: String,
+    val unlocked: Boolean,
+    val progress: Int,
+    val goal: Int
+)
+
+@Serializable
+data class AchievementsResponse(
+    val achievements: List<AchievementDto> = emptyList(),
+    val unlockedCount: Int = 0,
+    val newlyUnlocked: List<String> = emptyList()
+)
+
+@Serializable
+data class SeenAchievementsRequest(
+    val ids: List<String>
+)

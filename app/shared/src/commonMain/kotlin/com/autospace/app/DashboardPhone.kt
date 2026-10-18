@@ -67,6 +67,9 @@ internal fun PhoneDashboard(
     onOpenFullRating: () -> Unit,
     mistakesCount: Int,
     summary: ProgressSummaryDto?,
+    achievementsSubtitle: String?,
+    onAchievements: () -> Unit,
+    newAchievementName: String,
     onMistakes: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenPaywall: () -> Unit,
@@ -88,7 +91,7 @@ internal fun PhoneDashboard(
             PhoneStrip(summary)
             if (continueProgress != null) PhoneContinue(continueProgress, onContinue)
             PhoneTests(tests, mode, onModeChange, stateFor, onTileClick, onResetAll)
-            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion, board, onOpenFullRating, mistakesCount, onMistakes)
+            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion, board, onOpenFullRating, mistakesCount, onMistakes, achievementsSubtitle, onAchievements, newAchievementName)
             Spacer(Modifier.height(12.dp))
         }
     }
@@ -471,7 +474,18 @@ private fun PhoneTests(
 // ------------------------------------------------------------------------------------------
 
 @Composable
-private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQuestion: () -> Unit, board: LeaderboardDto?, onOpenFullRating: () -> Unit, mistakesCount: Int, onMistakes: () -> Unit) {
+private fun PhoneRows(
+    toastVisible: Boolean,
+    onToastClose: () -> Unit,
+    onDailyQuestion: () -> Unit,
+    board: LeaderboardDto?,
+    onOpenFullRating: () -> Unit,
+    mistakesCount: Int,
+    onMistakes: () -> Unit,
+    achievementsSubtitle: String?,
+    onAchievements: () -> Unit,
+    newAchievementName: String
+) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
@@ -513,7 +527,7 @@ private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQu
             PanelButton(strings.dashRepeat, onClick = onMistakes, dense = true)
         }
 
-        PhoneRow(icon = { MedalIcon(22.dp) }, title = strings.dashAchievements, subtitle = null, extra = {
+        PhoneRow(icon = { MedalIcon(22.dp) }, title = strings.dashAchievements, subtitle = achievementsSubtitle, onClick = onAchievements, extra = {
             Row(modifier = Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PhoneBadge(Brand.Yellow) { StarIcon(Brand.Yellow, 12.dp, filled = true) }
                 PhoneBadge(Dash.Blue) { TrophyIcon(12.dp) }
@@ -538,7 +552,7 @@ private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQu
                 ) { StarIcon(Brand.Yellow, 14.dp, filled = true) }
                 Column(modifier = Modifier.padding(start = 9.dp).weight(1f)) {
                     Text(strings.dashNewAchievement, fontFamily = interFamily, fontSize = 9.5.sp, color = Dash.Text2)
-                    Text(strings.dashAchievementName, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
+                    Text(newAchievementName, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
                 }
                 ChevronIcon(color = Dash.Text2, modifier = Modifier.size(14.dp))
             }
