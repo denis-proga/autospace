@@ -491,6 +491,56 @@ fun Application.module() {
             call.respond(AuthResponse(success = true, message = "Progress saved"))
         }
 
+        // Уровень, опыт и серия дней подряд.
+        // Опыт — верные ответы во всех тестах; серия — дни подряд с тестом или вопросом дня.
+        get("/progress-summary") {
+            val user = call.requireUser() ?: return@get
+
+            val payload = transaction {
+                val xp = TestResults
+                    .selectAll()
+                    .where { TestResults.userId eq user.id }
+                    .sumOf { it[TestResults.correctCount] }
+
+                val testDays = TestResults
+                    .select(TestResults.completedAt)
+                    .where { TestResults.userId eq user.id }
+                    .map { it[TestResults.completedAt] / 86_400_000L }
+
+                val questionDays = DailyAnswers
+                    .select(DailyAnswers.day)
+                    .where { DailyAnswers.userId eq user.id }
+                    .map { it[DailyAnswers.day] }
+
+                xp to (testDays + questionDays).toSortedSet().toList()
+            }
+
+            val (xp, activeDays) = payload
+
+            // серия идёт назад от сегодня; вчерашний день тоже считается, пока сегодня не закончился
+            val today = System.currentTimeMillis() / 86_400_000L
+            val daySet = activeDays.toSet()
+            var streak = 0
+            if (daySet.contains(today) || daySet.contains(today - 1)) {
+                var cursor = if (daySet.contains(today)) today else today - 1
+                while (daySet.contains(cursor)) {
+                    streak++
+                    cursor--
+                }
+            }
+
+            val goal = 150
+            call.respond(
+                ProgressSummaryResponse(
+                    xp = xp,
+                    level = xp / goal + 1,
+                    levelXp = xp % goal,
+                    levelGoal = goal,
+                    streak = streak
+                )
+            )
+        }
+
         // Работа над ошибками: вопросы, на которые человек в последний раз ответил неверно.
         get("/mistakes") {
             val user = call.requireUser() ?: return@get

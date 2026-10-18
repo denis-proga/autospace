@@ -362,3 +362,13 @@ data class MistakeAnswerResponse(
     val explanation: String = "",
     val left: Int = 0
 )
+
+/** Уровень, опыт и серия дней. Опыт — верные ответы за всё время. */
+@Serializable
+data class ProgressSummaryResponse(
+    val xp: Int,
+    val level: Int,
+    val levelXp: Int,
+    val levelGoal: Int,
+    val streak: Int
+)

@@ -66,6 +66,7 @@ internal fun PhoneDashboard(
     board: LeaderboardDto?,
     onOpenFullRating: () -> Unit,
     mistakesCount: Int,
+    summary: ProgressSummaryDto?,
     onMistakes: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenPaywall: () -> Unit,
@@ -84,7 +85,7 @@ internal fun PhoneDashboard(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             PhoneGreeting(username, license, onOpenPaywall)
-            PhoneStrip()
+            PhoneStrip(summary)
             if (continueProgress != null) PhoneContinue(continueProgress, onContinue)
             PhoneTests(tests, mode, onModeChange, stateFor, onTileClick, onResetAll)
             if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion, board, onOpenFullRating, mistakesCount, onMistakes)
@@ -239,7 +240,7 @@ private fun PhoneGreeting(username: String, license: LicenseInfoDto?, onOpenPayw
 }
 
 @Composable
-private fun PhoneStrip() {
+private fun PhoneStrip(summary: ProgressSummaryDto?) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     val shape = RoundedCornerShape(16.dp)
@@ -260,7 +261,7 @@ private fun PhoneStrip() {
                 Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = strings.dashRank,
+                            text = RankTitles.forLevel(summary?.level ?: 1, strings),
                             fontFamily = interFamily,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
@@ -270,7 +271,7 @@ private fun PhoneStrip() {
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = strings.dashLevel(PreviewData.LEVEL),
+                            text = strings.dashLevel(summary?.level ?: 1),
                             fontFamily = interFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
@@ -288,14 +289,14 @@ private fun PhoneStrip() {
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(PreviewData.XP.toFloat() / PreviewData.XP_NEXT)
+                                .fillMaxWidth(((summary?.levelXp ?: 0).toFloat() / (summary?.levelGoal ?: 150)).coerceIn(0f, 1f))
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(50))
                                 .background(Brush.horizontalGradient(listOf(Color(0xFFFFD84D), Color(0xFFFFA928))))
                         )
                     }
                     Text(
-                        text = "${PreviewData.XP} / ${PreviewData.XP_NEXT} XP",
+                        text = "${summary?.levelXp ?: 0} / ${summary?.levelGoal ?: 150} XP",
                         fontFamily = interFamily,
                         fontSize = 10.sp,
                         color = Dash.Text2,
@@ -314,7 +315,7 @@ private fun PhoneStrip() {
                     FlameIcon(size = 30.dp)
                     Column(modifier = Modifier.padding(start = 8.dp)) {
                         Text(
-                            text = strings.dashStreak(PreviewData.STREAK_DAYS),
+                            text = strings.dashStreak(summary?.streak ?: 0),
                             fontFamily = interFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,

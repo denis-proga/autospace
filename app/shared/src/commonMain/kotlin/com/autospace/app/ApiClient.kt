@@ -183,6 +183,16 @@ data class PlansResponseDto(
     val awayUntil: String = ""
 )
 
+/** Уровень, опыт и серия дней. */
+@Serializable
+data class ProgressSummaryDto(
+    val xp: Int = 0,
+    val level: Int = 1,
+    val levelXp: Int = 0,
+    val levelGoal: Int = 150,
+    val streak: Int = 0
+)
+
 /** Вопросы, в которых человек ошибся в прошлый раз. */
 @Serializable
 data class MistakesDto(
@@ -527,6 +537,12 @@ object ApiClient {
 
     suspend fun getPlans(): PlansResponseDto {
         val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun getProgressSummary(): ProgressSummaryDto {
+        val response = client.get("$BASE_URL/progress-summary") { auth() }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

@@ -147,6 +147,7 @@ private fun MainMenuContent(
     var leaderboard by remember { mutableStateOf<LeaderboardDto?>(null) }
     var showFullRating by remember { mutableStateOf(false) }
     var mistakesCount by remember { mutableStateOf(0) }
+    var summary by remember { mutableStateOf<ProgressSummaryDto?>(null) }
     var showMistakes by remember { mutableStateOf(false) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
@@ -165,6 +166,10 @@ private fun MainMenuContent(
         }
         try {
             mistakesCount = ApiClient.getMistakes(language.code, 1).count
+        } catch (e: Exception) {
+        }
+        try {
+            summary = ApiClient.getProgressSummary()
         } catch (e: Exception) {
         }
         try {
@@ -236,6 +241,7 @@ private fun MainMenuContent(
                 onOpenFullRating = { showFullRating = true },
                 mistakesCount = mistakesCount,
                 onMistakes = { showMistakes = true },
+                summary = summary,
                 onOpenStats = onOpenStats,
                 onOpenPaywall = onOpenPaywall,
                 toastVisible = toastVisible,
@@ -255,7 +261,7 @@ private fun MainMenuContent(
             )
 
             val centerContent: @Composable () -> Unit = {
-                GreetingBlock(layout, username, license, correctTotal, onOpenPaywall)
+                GreetingBlock(layout, username, license, correctTotal, summary, onOpenPaywall)
                 Spacer(Modifier.height(if (layout == DashLayout.Compact) 14.dp else 20.dp))
                 TestsPanel(
                     layout = layout,
@@ -789,6 +795,7 @@ private fun GreetingBlock(
     username: String,
     license: LicenseInfoDto?,
     correctTotal: Int,
+    summary: ProgressSummaryDto?,
     onOpenPaywall: () -> Unit
 ) {
     val strings = LocalStrings.current
@@ -809,7 +816,7 @@ private fun GreetingBlock(
                     AccessChip(license = license, onClick = onOpenPaywall, modifier = Modifier.padding(top = 12.dp))
                 }
             }
-            ProgressStrip(compact = true, correctTotal = correctTotal)
+            ProgressStrip(compact = true, correctTotal = correctTotal, summary = summary)
         }
     } else {
         DashPanel(padding = 22.dp) {
@@ -819,13 +826,13 @@ private fun GreetingBlock(
                 AccessChip(license = license, onClick = onOpenPaywall)
             }
             Spacer(Modifier.height(18.dp))
-            ProgressStrip(compact = false, correctTotal = correctTotal)
+            ProgressStrip(compact = false, correctTotal = correctTotal, summary = summary)
         }
     }
 }
 
 @Composable
-private fun ProgressStrip(compact: Boolean, correctTotal: Int) {
+private fun ProgressStrip(compact: Boolean, correctTotal: Int, summary: ProgressSummaryDto?) {
     val shape = RoundedCornerShape(20.dp)
 
     BoxWithConstraints(
@@ -848,12 +855,12 @@ private fun ProgressStrip(compact: Boolean, correctTotal: Int) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    RankCell(Modifier.weight(1f), dense = true)
-                    LevelCell(Modifier.weight(1f).padding(start = 12.dp), dense = true)
+                    RankCell(Modifier.weight(1f), dense = true, summary = summary)
+                    LevelCell(Modifier.weight(1f).padding(start = 12.dp), dense = true, summary = summary)
                 }
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Dash.PanelBorder))
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    StreakCell(Modifier.weight(1f), dense = true)
+                    StreakCell(Modifier.weight(1f), dense = true, summary = summary)
                     CorrectCell(Modifier.weight(1f).padding(start = 12.dp), large = false, dense = true)
                 }
             }
@@ -862,11 +869,11 @@ private fun ProgressStrip(compact: Boolean, correctTotal: Int) {
                 modifier = Modifier.padding(horizontal = if (dense) 12.dp else 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                RankCell(Modifier.weight(1f), dense)
+                RankCell(Modifier.weight(1f), dense, summary)
                 StripDivider()
-                LevelCell(Modifier.weight(if (dense) 1.5f else 1.4f).padding(horizontal = if (dense) 8.dp else 16.dp), dense)
+                LevelCell(Modifier.weight(if (dense) 1.5f else 1.4f).padding(horizontal = if (dense) 8.dp else 16.dp), dense, summary)
                 StripDivider()
-                StreakCell(Modifier.weight(if (dense) 1.4f else 1.2f).padding(horizontal = if (dense) 8.dp else 14.dp), dense)
+                StreakCell(Modifier.weight(if (dense) 1.4f else 1.2f).padding(horizontal = if (dense) 8.dp else 14.dp), dense, summary)
                 StripDivider()
                 CorrectCell(Modifier.weight(if (dense) 1.25f else 1.1f).padding(start = if (dense) 8.dp else 14.dp), large = !dense, dense = dense)
             }
@@ -875,12 +882,12 @@ private fun ProgressStrip(compact: Boolean, correctTotal: Int) {
 }
 
 @Composable
-private fun RankCell(modifier: Modifier, dense: Boolean) {
+private fun RankCell(modifier: Modifier, dense: Boolean, summary: ProgressSummaryDto?) {
     val strings = LocalStrings.current
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         RankBadgeIcon(size = if (dense) 38.dp else 48.dp)
         Text(
-            text = strings.dashRank,
+            text = RankTitles.forLevel(summary?.level ?: 1, strings),
             fontFamily = interFontFamily(),
             fontWeight = FontWeight.SemiBold,
             fontSize = if (dense) 13.sp else 16.sp,
@@ -892,12 +899,12 @@ private fun RankCell(modifier: Modifier, dense: Boolean) {
 }
 
 @Composable
-private fun LevelCell(modifier: Modifier, dense: Boolean) {
+private fun LevelCell(modifier: Modifier, dense: Boolean, summary: ProgressSummaryDto?) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     Column(modifier = modifier) {
         Text(
-            text = strings.dashLevel(PreviewData.LEVEL),
+            text = strings.dashLevel(summary?.level ?: 1),
             fontFamily = interFamily,
             fontWeight = FontWeight.Bold,
             fontSize = if (dense) 14.sp else 16.sp,
@@ -914,14 +921,14 @@ private fun LevelCell(modifier: Modifier, dense: Boolean) {
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(PreviewData.XP.toFloat() / PreviewData.XP_NEXT)
+                    .fillMaxWidth(((summary?.levelXp ?: 0).toFloat() / (summary?.levelGoal ?: 150)).coerceIn(0f, 1f))
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
                     .background(Brush.horizontalGradient(listOf(Color(0xFFFFD84D), Color(0xFFFFA928))))
             )
         }
         Text(
-            text = "${PreviewData.XP} / ${PreviewData.XP_NEXT} XP",
+            text = "${summary?.levelXp ?: 0} / ${summary?.levelGoal ?: 150} XP",
             fontFamily = interFamily,
             fontSize = if (dense) 11.sp else 12.sp,
             color = Dash.Text2,
@@ -931,14 +938,14 @@ private fun LevelCell(modifier: Modifier, dense: Boolean) {
 }
 
 @Composable
-private fun StreakCell(modifier: Modifier, dense: Boolean) {
+private fun StreakCell(modifier: Modifier, dense: Boolean, summary: ProgressSummaryDto?) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         FlameIcon(size = if (dense) 28.dp else 36.dp)
         Column(modifier = Modifier.padding(start = if (dense) 6.dp else 8.dp)) {
             Text(
-                text = strings.dashStreak(PreviewData.STREAK_DAYS),
+                text = strings.dashStreak(summary?.streak ?: 0),
                 fontFamily = interFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = if (dense) 13.sp else 14.sp,

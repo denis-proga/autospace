@@ -56,16 +56,23 @@ internal fun MistakesDialog(language: String, onDismiss: () -> Unit, onCountChan
     var answer by remember { mutableStateOf<MistakeAnswerDto?>(null) }
     var chosen by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var remaining by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    suspend fun loadBatch() {
         try {
             val response = ApiClient.getMistakes(language, 10)
             questions = response.questions
+            remaining = response.count
+            index = 0
+            answer = null
+            chosen = ""
             onCountChanged(response.count)
         } catch (e: Exception) {
             error = friendlyServerErrorMessage(e, strings)
         }
     }
+
+    LaunchedEffect(Unit) { loadBatch() }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val shape = RoundedCornerShape(24.dp)
@@ -92,7 +99,7 @@ internal fun MistakesDialog(language: String, onDismiss: () -> Unit, onCountChan
                         color = Color.White,
                         modifier = Modifier.weight(1f)
                     )
-                    if (list != null && list.isNotEmpty()) {
+                    if (list != null && index < list.size) {
                         Text(
                             text = "${index + 1} ${ui.ofWord} ${list.size}",
                             fontFamily = interFontFamily(),
@@ -113,7 +120,12 @@ internal fun MistakesDialog(language: String, onDismiss: () -> Unit, onCountChan
 
                     list.isEmpty() -> Text(ms.empty, fontFamily = interFontFamily(), fontSize = 14.sp, color = Dash.Text2)
 
-                    index >= list.size -> Text(ms.done, fontFamily = interFontFamily(), fontSize = 14.sp, color = Dash.Green)
+                    index >= list.size -> Text(
+                        if (remaining > 0) ms.moreLeft(remaining) else ms.done,
+                        fontFamily = interFontFamily(),
+                        fontSize = 14.sp,
+                        color = if (remaining > 0) Dash.Text2 else Dash.Green
+                    )
 
                     else -> {
                         val question = list[index]
@@ -219,15 +231,19 @@ internal fun MistakesDialog(language: String, onDismiss: () -> Unit, onCountChan
                 Spacer(Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     val canGoNext = answer != null && list != null && index < list.size
-                    if (canGoNext) {
-                        DialogYellowButton(text = ui.next) {
+                    val batchFinished = list != null && list.isNotEmpty() && index >= list.size
+                    when {
+                        canGoNext -> DialogYellowButton(text = ui.next) {
                             answer = null
                             chosen = ""
                             index++
                         }
-                        Spacer(Modifier.height(0.dp))
-                    } else {
-                        DialogYellowButton(text = strings.testClose, onClick = onDismiss)
+
+                        batchFinished && remaining > 0 -> DialogYellowButton(text = ms.next) {
+                            scope.launch { loadBatch() }
+                        }
+
+                        else -> DialogYellowButton(text = strings.testClose, onClick = onDismiss)
                     }
                 }
             }
@@ -255,13 +271,13 @@ internal fun DialogYellowButton(text: String, onClick: () -> Unit) {
 }
 
 /** Подписи работы над ошибками. Отдельный класс: в AppStrings лимит полей исчерпан. */
-internal class MistakesStrings(val empty: String, val done: String)
+internal class MistakesStrings(val empty: String, val done: String, val next: String, val moreLeft: (Int) -> String)
 
-private val MistRu = MistakesStrings("Ошибок нет, повторять нечего", "Все ошибки разобраны")
-private val MistEn = MistakesStrings("No mistakes to review", "All mistakes are done")
-private val MistEs = MistakesStrings("No hay errores que repasar", "Todos los errores repasados")
-private val MistDe = MistakesStrings("Keine Fehler zum Wiederholen", "Alle Fehler bearbeitet")
-private val MistUk = MistakesStrings("Помилок немає, повторювати нічого", "Усі помилки розібрані")
+private val MistRu = MistakesStrings("Ошибок нет, повторять нечего", "Все ошибки разобраны", "Ещё ошибки", { n -> "Осталось ошибок: $n" })
+private val MistEn = MistakesStrings("No mistakes to review", "All mistakes are done", "More mistakes", { n -> "Mistakes left: $n" })
+private val MistEs = MistakesStrings("No hay errores que repasar", "Todos los errores repasados", "Más errores", { n -> "Errores restantes: $n" })
+private val MistDe = MistakesStrings("Keine Fehler zum Wiederholen", "Alle Fehler bearbeitet", "Weitere Fehler", { n -> "Verbleibende Fehler: $n" })
+private val MistUk = MistakesStrings("Помилок немає, повторювати нічого", "Усі помилки розібрані", "Ще помилки", { n -> "Залишилось помилок: $n" })
 
 internal fun mistakesStrings(strings: AppStrings): MistakesStrings = when (strings.botGreeting) {
     EnglishStrings.botGreeting -> MistEn
