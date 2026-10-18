@@ -49,12 +49,16 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.ktor.util.date.GMTDate
+
+/** Версия приложения: видна в профиле, чтобы по жалобе понимать, какая у человека сборка. */
+const val APP_VERSION = "2.0.0"
 
 private fun profTwo(n: Int): String = n.toString().padStart(2, '0')
 
@@ -287,6 +291,14 @@ fun ProfileScreen(
                 Spacer(Modifier.height(if (wide) 16.dp else 12.dp))
 
                 LogoutButton(text = ps.logout, onClick = onLogout)
+                Text(
+                    text = "AutoSpace $APP_VERSION",
+                    fontFamily = interFontFamily(),
+                    fontSize = 11.sp,
+                    color = Dash.Text2,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+                )
                 Spacer(Modifier.height(24.dp))
             }
         }

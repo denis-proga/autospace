@@ -22,7 +22,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "AutoSpace"
-            packageVersion = "1.0.1"
+            packageVersion = "2.0.0"
 
             windows {
                 iconFile.set(project.file("app_icon.ico"))

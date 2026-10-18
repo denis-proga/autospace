@@ -6,7 +6,13 @@
     <meta name="theme-color" content="#0a0917">
     <title>AutoSpace</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="description" content="Подготовка к теоретическому экзамену по правилам дорожного движения">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AutoSpace">
     <style>
         html, body {
             margin: 0;
@@ -20,5 +26,15 @@
     <script src="autospace-web.js"></script>
 </head>
 <body>
+    <script>
+        // регистрация service worker: без него браузер не предлагает установить приложение
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js').catch(function (e) {
+                    console.log('Service worker not registered:', e);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

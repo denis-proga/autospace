@@ -150,6 +150,7 @@ private fun MainMenuContent(
     var summary by remember { mutableStateOf<ProgressSummaryDto?>(null) }
     var achievements by remember { mutableStateOf<AchievementsDto?>(null) }
     var showAchievements by remember { mutableStateOf(false) }
+    val wideScroll = rememberScrollState()
     var newAchievement by remember { mutableStateOf<String?>(null) }
     var showMistakes by remember { mutableStateOf(false) }
 
@@ -289,12 +290,16 @@ private fun MainMenuContent(
 
             when (layout) {
                 DashLayout.Wide -> Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    Sidebar()
+                    Sidebar(
+                        onHome = { scope.launch { wideScroll.animateScrollTo(0) } },
+                        onMistakes = { showMistakes = true },
+                        onAchievements = { showAchievements = true }
+                    )
                     Row(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(wideScroll)
                             .padding(20.dp),
                         horizontalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
@@ -766,7 +771,11 @@ internal fun LanguageMenuChip(language: Language, onChange: (Language) -> Unit, 
 }
 
 @Composable
-private fun Sidebar() {
+private fun Sidebar(
+    onHome: () -> Unit,
+    onMistakes: () -> Unit,
+    onAchievements: () -> Unit
+) {
     val strings = LocalStrings.current
     Column(
         modifier = Modifier
@@ -776,15 +785,15 @@ private fun Sidebar() {
             .padding(horizontal = 14.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        SidebarItem(strings.navHome, selected = true) { HomeIcon(Color.White) }
-        SidebarItem(strings.navTests, selected = false) { DocIcon(Dash.Text2) }
-        SidebarItem(strings.navMistakes, selected = false) { RefreshIcon(Dash.Text2) }
-        SidebarItem(strings.navAchievements, selected = false) { StarIcon(Dash.Text2) }
+        // «Тесты» убран: он вёл на ту же страницу. «Ошибки» и «Достижения» открывают окна.
+        SidebarItem(strings.navHome, selected = true, onClick = onHome) { HomeIcon(Color.White) }
+        SidebarItem(strings.navMistakes, selected = false, onClick = onMistakes) { RefreshIcon(Dash.Text2) }
+        SidebarItem(strings.navAchievements, selected = false, onClick = onAchievements) { StarIcon(Dash.Text2) }
     }
 }
 
 @Composable
-private fun SidebarItem(text: String, selected: Boolean, icon: @Composable () -> Unit) {
+private fun SidebarItem(text: String, selected: Boolean, onClick: () -> Unit, icon: @Composable () -> Unit) {
     val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
@@ -792,7 +801,7 @@ private fun SidebarItem(text: String, selected: Boolean, icon: @Composable () ->
             .height(50.dp)
             .clip(shape)
             .background(if (selected) Color(0xFF2A3FC7).copy(alpha = 0.38f) else Color.Transparent)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
