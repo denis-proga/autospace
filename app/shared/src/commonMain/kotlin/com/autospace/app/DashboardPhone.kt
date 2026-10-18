@@ -63,6 +63,8 @@ internal fun PhoneDashboard(
     continueProgress: LatestProgressDto?,
     onContinue: (LatestProgressDto) -> Unit,
     onDailyQuestion: () -> Unit,
+    board: LeaderboardDto?,
+    onOpenFullRating: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenPaywall: () -> Unit,
     toastVisible: Boolean,
@@ -83,7 +85,7 @@ internal fun PhoneDashboard(
             PhoneStrip()
             if (continueProgress != null) PhoneContinue(continueProgress, onContinue)
             PhoneTests(tests, mode, onModeChange, stateFor, onTileClick, onResetAll)
-            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion)
+            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion, board, onOpenFullRating)
             Spacer(Modifier.height(12.dp))
         }
     }
@@ -466,7 +468,7 @@ private fun PhoneTests(
 // ------------------------------------------------------------------------------------------
 
 @Composable
-private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQuestion: () -> Unit) {
+private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQuestion: () -> Unit, board: LeaderboardDto?, onOpenFullRating: () -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
@@ -477,11 +479,11 @@ private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQu
 
         PhoneRow(icon = { TrophyIcon(22.dp) }, title = strings.dashWeeklyRating, subtitle = null, extra = {
             Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                PreviewData.TOP.forEach { (name, score, place) ->
+                (board?.entries ?: emptyList()).forEach { entry ->
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        PhonePlace(place)
+                        PhonePlace(entry.rank)
                         Text(
-                            "$name $score",
+                            "${entry.username} ${entry.points}",
                             fontFamily = interFamily,
                             fontSize = 9.5.sp,
                             color = Color.White,
@@ -495,7 +497,10 @@ private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQu
             }
             Row(modifier = Modifier.padding(top = 3.dp)) {
                 Text(strings.dashYourPlace, fontFamily = interFamily, fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f))
-                Text(" ${PreviewData.MY_PLACE}", fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Brand.Yellow)
+                Text(
+                    if ((board?.myRank ?: 0) > 0) " ${board?.myRank}" else " —",
+                    fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Brand.Yellow
+                )
             }
         }) {
             ChevronIcon(color = Dash.Blue, modifier = Modifier.size(14.dp))

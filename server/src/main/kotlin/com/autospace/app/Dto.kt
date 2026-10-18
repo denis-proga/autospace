@@ -322,3 +322,21 @@ data class DailyQuestionResponse(
 data class DailyAnswerRequest(
     val option: String
 )
+
+/** Строка рейтинга. points — сумма верных ответов за период. */
+@Serializable
+data class LeaderboardEntry(
+    val rank: Int,
+    val username: String,
+    val avatar: String,
+    val points: Int,
+    val isMe: Boolean
+)
+
+@Serializable
+data class LeaderboardResponse(
+    val entries: List<LeaderboardEntry>,
+    val myRank: Int = 0,
+    val myPoints: Int = 0,
+    val total: Int = 0
+)

@@ -21,6 +21,8 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -486,6 +488,60 @@ fun Application.module() {
             }
 
             call.respond(AuthResponse(success = true, message = "Progress saved"))
+        }
+
+        // Рейтинг: сумма верных ответов за календарную неделю (с понедельника) или за всё время.
+        // scope=week (по умолчанию) или scope=all, limit — сколько строк вернуть.
+        get("/leaderboard") {
+            val user = call.requireUser() ?: return@get
+            val scope = call.request.queryParameters["scope"] ?: "week"
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, 100) ?: 3
+
+            // понедельник 00:00 UTC текущей недели
+            val weekStart = run {
+                val day = System.currentTimeMillis() / 86_400_000L
+                // 1 января 1970 — четверг, поэтому сдвигаем на 3 дня, чтобы неделя начиналась с понедельника
+                val sinceMonday = (day + 3) % 7
+                (day - sinceMonday) * 86_400_000L
+            }
+            val from = if (scope == "all") 0L else weekStart
+
+            val rows = transaction {
+                val sumColumn = TestResults.correctCount.sum()
+                TestResults
+                    .select(TestResults.userId, sumColumn)
+                    .where { TestResults.completedAt greaterEq from }
+                    .groupBy(TestResults.userId)
+                    .map { it[TestResults.userId] to (it[sumColumn] ?: 0) }
+                    .sortedByDescending { it.second }
+            }
+
+            val names = transaction {
+                Users.selectAll().associate { row ->
+                    row[Users.id] to (row[Users.username] to row[Users.avatar].orEmpty())
+                }
+            }
+
+            val myIndex = rows.indexOfFirst { it.first == user.id }
+            val entries = rows.take(limit).mapIndexed { index, (userId, points) ->
+                val info = names[userId]
+                LeaderboardEntry(
+                    rank = index + 1,
+                    username = info?.first ?: "—",
+                    avatar = info?.second.orEmpty(),
+                    points = points,
+                    isMe = userId == user.id
+                )
+            }
+
+            call.respond(
+                LeaderboardResponse(
+                    entries = entries,
+                    myRank = if (myIndex >= 0) myIndex + 1 else 0,
+                    myPoints = if (myIndex >= 0) rows[myIndex].second else 0,
+                    total = rows.size
+                )
+            )
         }
 
         // Вопрос дня: один и тот же для всех, выбирается по дате, отвечать можно раз в сутки.

@@ -183,6 +183,24 @@ data class PlansResponseDto(
     val awayUntil: String = ""
 )
 
+/** Строка рейтинга: сумма верных ответов за период. */
+@Serializable
+data class LeaderboardEntryDto(
+    val rank: Int,
+    val username: String,
+    val avatar: String = "",
+    val points: Int,
+    val isMe: Boolean = false
+)
+
+@Serializable
+data class LeaderboardDto(
+    val entries: List<LeaderboardEntryDto> = emptyList(),
+    val myRank: Int = 0,
+    val myPoints: Int = 0,
+    val total: Int = 0
+)
+
 /** Вопрос дня: один и тот же для всех, меняется раз в сутки. */
 @Serializable
 data class DailyQuestionDto(
@@ -487,6 +505,12 @@ object ApiClient {
 
     suspend fun getPlans(): PlansResponseDto {
         val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun getLeaderboard(scope: String, limit: Int): LeaderboardDto {
+        val response = client.get("$BASE_URL/leaderboard?scope=$scope&limit=$limit") { auth() }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

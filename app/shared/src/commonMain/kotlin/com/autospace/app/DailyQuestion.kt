@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -73,12 +74,15 @@ internal fun DailyQuestionDialog(language: String, onDismiss: () -> Unit) {
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val shape = RoundedCornerShape(24.dp)
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+        // окно по центру: не шире 460 точек на большом экране и не шире самого экрана на телефоне
+        Box(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
         Column(
             modifier = Modifier
-                // на узком окне диалог прижимаем к ширине экрана, иначе он уезжает за край
-                .fillMaxWidth()
-                .widthIn(max = 520.dp)
+                .widthIn(max = 460.dp)
+                .heightIn(max = 640.dp)
                 .clip(shape)
                 .background(Brush.verticalGradient(listOf(Color(0xFF1A2480), Color(0xFF0C1456))))
                 .border(1.dp, Dash.PanelBorder, shape)
@@ -116,11 +120,15 @@ internal fun DailyQuestionDialog(language: String, onDismiss: () -> Unit) {
 
                 else -> {
                     val question = current.question
-                    Column(modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+                    Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                         NetworkImage(
                             url = question.imageUrl,
                             contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(14.dp))
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(190.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF0A0F45).copy(alpha = 0.5f))
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(

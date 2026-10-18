@@ -143,6 +143,8 @@ private fun MainMenuContent(
     var toastVisible by remember { mutableStateOf(PreviewData.SHOW) }
     var continueProgress by remember { mutableStateOf<LatestProgressDto?>(null) }
     var showDailyQuestion by remember { mutableStateOf(false) }
+    var leaderboard by remember { mutableStateOf<LeaderboardDto?>(null) }
+    var showFullRating by remember { mutableStateOf(false) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
@@ -152,6 +154,10 @@ private fun MainMenuContent(
         try {
             license = ApiClient.getLicense()
             MenuAvatar.id = license?.avatar.orEmpty()
+        } catch (e: Exception) {
+        }
+        try {
+            leaderboard = ApiClient.getLeaderboard("week", 3)
         } catch (e: Exception) {
         }
         try {
@@ -219,6 +225,8 @@ private fun MainMenuContent(
                 continueProgress = continueProgress,
                 onContinue = { onContinueClick(it) },
                 onDailyQuestion = { showDailyQuestion = true },
+                board = leaderboard,
+                onOpenFullRating = { showFullRating = true },
                 onOpenStats = onOpenStats,
                 onOpenPaywall = onOpenPaywall,
                 toastVisible = toastVisible,
@@ -266,7 +274,7 @@ private fun MainMenuContent(
                         Column(modifier = Modifier.width(372.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                             QuestionPanel(onAnswer = { showDailyQuestion = true })
-                            RatingPanel()
+                            RatingPanel(leaderboard, onOpenFull = { showFullRating = true })
                             MistakesPanel()
                         }
                     }
@@ -284,7 +292,7 @@ private fun MainMenuContent(
                     Column(modifier = Modifier.width(340.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                         QuestionPanel(onAnswer = { showDailyQuestion = true })
-                        RatingPanel()
+                        RatingPanel(leaderboard, onOpenFull = { showFullRating = true })
                         MistakesPanel()
                     }
                 }
@@ -305,7 +313,7 @@ private fun MainMenuContent(
                                 QuestionPanel(onAnswer = { showDailyQuestion = true })
                             }
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                RatingPanel()
+                                RatingPanel(leaderboard, onOpenFull = { showFullRating = true })
                                 MistakesPanel()
                             }
                         }
@@ -333,6 +341,10 @@ private fun MainMenuContent(
                 }
             }
         }
+        }
+
+        if (showFullRating) {
+            FullRatingDialog(onDismiss = { showFullRating = false })
         }
 
         if (showDailyQuestion) {
@@ -1072,8 +1084,9 @@ private fun QuestionPanel(onAnswer: () -> Unit) {
 }
 
 @Composable
-private fun RatingPanel() {
-    if (!PreviewData.SHOW) return
+private fun RatingPanel(board: LeaderboardDto?, onOpenFull: () -> Unit) {
+    // пока за неделю никто не прошёл ни одного теста, таблицу не показываем
+    if (board == null || board.entries.isEmpty()) return
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     DashPanel {
@@ -1082,21 +1095,41 @@ private fun RatingPanel() {
             Text(strings.dashWeeklyRating, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White, modifier = Modifier.padding(start = 14.dp))
         }
         Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            PreviewData.TOP.forEach { (name, score, place) ->
+            board.entries.forEach { entry ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    PlaceDot(place)
-                    Box(modifier = Modifier.padding(start = 10.dp)) { AvatarCircle(initial = name, size = 28.dp) }
-                    Text(name, fontFamily = interFamily, fontSize = 14.sp, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 10.dp).weight(1f))
-                    Text(score.toString(), fontFamily = interFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
+                    PlaceDot(entry.rank)
+                    Box(modifier = Modifier.padding(start = 10.dp)) {
+                        UserAvatar(username = entry.username, avatarId = entry.avatar, size = 28.dp)
+                    }
+                    Text(
+                        entry.username,
+                        fontFamily = interFamily,
+                        fontSize = 14.sp,
+                        color = if (entry.isMe) Brand.Yellow else Color.White,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 10.dp).weight(1f)
+                    )
+                    Text(entry.points.toString(), fontFamily = interFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
                 }
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(strings.dashYourPlace, fontFamily = interFamily, fontSize = 13.sp, color = Color.White.copy(alpha = 0.85f))
-            Text(" ${PreviewData.MY_PLACE}", fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Brand.Yellow)
+            Text(
+                if (board.myRank > 0) " ${board.myRank}" else " —",
+                fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Brand.Yellow
+            )
             Spacer(Modifier.weight(1f))
-            Text(strings.dashFullRating, fontFamily = interFamily, fontSize = 13.sp, color = Dash.Blue, maxLines = 1)
-            ChevronIcon(color = Dash.Blue, modifier = Modifier.size(16.dp))
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onOpenFull)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(strings.dashFullRating, fontFamily = interFamily, fontSize = 13.sp, color = Dash.Blue, maxLines = 1)
+                ChevronIcon(color = Dash.Blue, modifier = Modifier.size(16.dp))
+            }
         }
     }
 }
