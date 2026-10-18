@@ -65,6 +65,8 @@ internal fun PhoneDashboard(
     onDailyQuestion: () -> Unit,
     board: LeaderboardDto?,
     onOpenFullRating: () -> Unit,
+    mistakesCount: Int,
+    onMistakes: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenPaywall: () -> Unit,
     toastVisible: Boolean,
@@ -85,7 +87,7 @@ internal fun PhoneDashboard(
             PhoneStrip()
             if (continueProgress != null) PhoneContinue(continueProgress, onContinue)
             PhoneTests(tests, mode, onModeChange, stateFor, onTileClick, onResetAll)
-            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion, board, onOpenFullRating)
+            if (PreviewData.SHOW) PhoneRows(toastVisible, onToastClose, onDailyQuestion, board, onOpenFullRating, mistakesCount, onMistakes)
             Spacer(Modifier.height(12.dp))
         }
     }
@@ -468,7 +470,7 @@ private fun PhoneTests(
 // ------------------------------------------------------------------------------------------
 
 @Composable
-private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQuestion: () -> Unit, board: LeaderboardDto?, onOpenFullRating: () -> Unit) {
+private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQuestion: () -> Unit, board: LeaderboardDto?, onOpenFullRating: () -> Unit, mistakesCount: Int, onMistakes: () -> Unit) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
@@ -477,7 +479,7 @@ private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQu
             PanelButton(strings.dashAnswer, onClick = onDailyQuestion, dense = true)
         }
 
-        PhoneRow(icon = { TrophyIcon(22.dp) }, title = strings.dashWeeklyRating, subtitle = null, extra = {
+        if (board != null && board.entries.isNotEmpty()) PhoneRow(icon = { TrophyIcon(22.dp) }, title = strings.dashWeeklyRating, subtitle = null, onClick = onOpenFullRating, extra = {
             Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 (board?.entries ?: emptyList()).forEach { entry ->
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -506,8 +508,8 @@ private fun PhoneRows(toastVisible: Boolean, onToastClose: () -> Unit, onDailyQu
             ChevronIcon(color = Dash.Blue, modifier = Modifier.size(14.dp))
         }
 
-        PhoneRow(icon = { TargetIcon(22.dp) }, title = strings.dashMistakes, subtitle = strings.dashMistakesCount(PreviewData.MISTAKES)) {
-            PanelButton(strings.dashRepeat, onClick = { }, dense = true)
+        if (mistakesCount > 0) PhoneRow(icon = { TargetIcon(22.dp) }, title = strings.dashMistakes, subtitle = strings.dashMistakesCount(mistakesCount)) {
+            PanelButton(strings.dashRepeat, onClick = onMistakes, dense = true)
         }
 
         PhoneRow(icon = { MedalIcon(22.dp) }, title = strings.dashAchievements, subtitle = null, extra = {
@@ -549,11 +551,20 @@ private fun PhoneRow(
     title: String,
     subtitle: String?,
     extra: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit
 ) {
     val interFamily = interFontFamily()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+                } else Modifier
+            )
+            .padding(vertical = 8.dp, horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.width(28.dp), contentAlignment = Alignment.Center) { icon() }

@@ -183,6 +183,28 @@ data class PlansResponseDto(
     val awayUntil: String = ""
 )
 
+/** Вопросы, в которых человек ошибся в прошлый раз. */
+@Serializable
+data class MistakesDto(
+    val count: Int = 0,
+    val questions: List<QuestionDto> = emptyList()
+)
+
+@Serializable
+data class MistakeAnswerRequestDto(
+    val questionId: Int,
+    val option: String
+)
+
+@Serializable
+data class MistakeAnswerDto(
+    val success: Boolean,
+    val correct: Boolean = false,
+    val correctOption: String = "",
+    val explanation: String = "",
+    val left: Int = 0
+)
+
 /** Строка рейтинга: сумма верных ответов за период. */
 @Serializable
 data class LeaderboardEntryDto(
@@ -505,6 +527,22 @@ object ApiClient {
 
     suspend fun getPlans(): PlansResponseDto {
         val response = client.get("$BASE_URL/plans") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun getMistakes(lang: String, limit: Int): MistakesDto {
+        val response = client.get("$BASE_URL/mistakes?lang=$lang&limit=$limit") { auth() }
+        if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
+        return response.body()
+    }
+
+    suspend fun answerMistake(questionId: Int, option: String, lang: String): MistakeAnswerDto {
+        val response = client.post("$BASE_URL/mistakes/answer?lang=$lang") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(MistakeAnswerRequestDto(questionId, option))
+        }
         if (response.status == HttpStatusCode.Unauthorized) throw SessionExpiredException()
         return response.body()
     }

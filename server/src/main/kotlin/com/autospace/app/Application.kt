@@ -22,6 +22,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -488,6 +489,80 @@ fun Application.module() {
             }
 
             call.respond(AuthResponse(success = true, message = "Progress saved"))
+        }
+
+        // Работа над ошибками: вопросы, на которые человек в последний раз ответил неверно.
+        get("/mistakes") {
+            val user = call.requireUser() ?: return@get
+            val lang = call.request.queryParameters["lang"] ?: "ru"
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, 30) ?: 10
+
+            val payload = transaction {
+                val wrongIds = UserAnswers
+                    .select(UserAnswers.questionId)
+                    .where { (UserAnswers.userId eq user.id) and (UserAnswers.lastCorrect eq false) }
+                    .map { it[UserAnswers.questionId] }
+
+                val questions = if (wrongIds.isEmpty()) emptyList() else {
+                    Questions.selectAll()
+                        .where { Questions.id inList wrongIds.take(limit) }
+                        .map { buildQuestion(it, lang) }
+                }
+                wrongIds.size to questions
+            }
+
+            call.respond(MistakesResponse(count = payload.first, questions = payload.second))
+        }
+
+        // Ответ в режиме работы над ошибками: верный ответ убирает вопрос из списка.
+        // Результаты тестов и рейтинг это не меняет: тренировка, а не новая попытка теста.
+        post("/mistakes/answer") {
+            val user = call.requireUser() ?: return@post
+            val request = call.receive<MistakeAnswerRequest>()
+            val lang = call.request.queryParameters["lang"] ?: "ru"
+
+            val payload = transaction {
+                val row = Questions.selectAll().where { Questions.id eq request.questionId }.singleOrNull()
+                    ?: return@transaction null
+
+                val correctLetter = row[Questions.correctOption].uppercase()
+                val chosen = request.option.trim().uppercase().take(1)
+                val isCorrect = chosen == correctLetter
+
+                if (isCorrect) {
+                    UserAnswers.update({
+                        (UserAnswers.userId eq user.id) and (UserAnswers.questionId eq request.questionId)
+                    }) {
+                        it[UserAnswers.lastCorrect] = true
+                        it[UserAnswers.updatedAt] = System.currentTimeMillis()
+                    }
+                }
+
+                val left = UserAnswers
+                    .select(UserAnswers.questionId)
+                    .where { (UserAnswers.userId eq user.id) and (UserAnswers.lastCorrect eq false) }
+                    .count()
+                    .toInt()
+
+                // пояснение на языке интерфейса берём той же функцией, что и в тестах
+                Triple(isCorrect, correctLetter, buildQuestion(row, lang).explanation) to left
+            }
+
+            if (payload == null) {
+                call.respond(MistakeAnswerResponse(success = false))
+                return@post
+            }
+
+            val (answer, left) = payload
+            call.respond(
+                MistakeAnswerResponse(
+                    success = true,
+                    correct = answer.first,
+                    correctOption = answer.second,
+                    explanation = answer.third,
+                    left = left
+                )
+            )
         }
 
         // Рейтинг: сумма верных ответов за календарную неделю (с понедельника) или за всё время.

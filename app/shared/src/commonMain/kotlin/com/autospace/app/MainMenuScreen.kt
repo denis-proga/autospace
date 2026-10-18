@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -145,6 +146,8 @@ private fun MainMenuContent(
     var showDailyQuestion by remember { mutableStateOf(false) }
     var leaderboard by remember { mutableStateOf<LeaderboardDto?>(null) }
     var showFullRating by remember { mutableStateOf(false) }
+    var mistakesCount by remember { mutableStateOf(0) }
+    var showMistakes by remember { mutableStateOf(false) }
 
     LaunchedEffect(username, refreshTrigger, refreshKey) {
         try {
@@ -158,6 +161,10 @@ private fun MainMenuContent(
         }
         try {
             leaderboard = ApiClient.getLeaderboard("week", 3)
+        } catch (e: Exception) {
+        }
+        try {
+            mistakesCount = ApiClient.getMistakes(language.code, 1).count
         } catch (e: Exception) {
         }
         try {
@@ -227,6 +234,8 @@ private fun MainMenuContent(
                 onDailyQuestion = { showDailyQuestion = true },
                 board = leaderboard,
                 onOpenFullRating = { showFullRating = true },
+                mistakesCount = mistakesCount,
+                onMistakes = { showMistakes = true },
                 onOpenStats = onOpenStats,
                 onOpenPaywall = onOpenPaywall,
                 toastVisible = toastVisible,
@@ -275,7 +284,7 @@ private fun MainMenuContent(
                             ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                             QuestionPanel(onAnswer = { showDailyQuestion = true })
                             RatingPanel(leaderboard, onOpenFull = { showFullRating = true })
-                            MistakesPanel()
+                            MistakesPanel(mistakesCount, onRepeat = { showMistakes = true })
                         }
                     }
                 }
@@ -293,7 +302,7 @@ private fun MainMenuContent(
                         ContinuePanel(continueProgress, onContinue = { onContinueClick(it) })
                         QuestionPanel(onAnswer = { showDailyQuestion = true })
                         RatingPanel(leaderboard, onOpenFull = { showFullRating = true })
-                        MistakesPanel()
+                        MistakesPanel(mistakesCount, onRepeat = { showMistakes = true })
                     }
                 }
 
@@ -314,7 +323,7 @@ private fun MainMenuContent(
                             }
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 RatingPanel(leaderboard, onOpenFull = { showFullRating = true })
-                                MistakesPanel()
+                                MistakesPanel(mistakesCount, onRepeat = { showMistakes = true })
                             }
                         }
                     }
@@ -331,7 +340,15 @@ private fun MainMenuContent(
                     centerContent()
                     if (PreviewData.SHOW || continueProgress != null) {
                         Spacer(Modifier.height(10.dp))
-                        SideCards(continueProgress, onContinue = { onContinueClick(it) }, onDailyQuestion = { showDailyQuestion = true })
+                        SideCards(
+                            progress = continueProgress,
+                            onContinue = { onContinueClick(it) },
+                            onDailyQuestion = { showDailyQuestion = true },
+                            mistakesCount = mistakesCount,
+                            onMistakes = { showMistakes = true },
+                            board = leaderboard,
+                            onOpenFullRating = { showFullRating = true }
+                        )
                         if (toastVisible) {
                             Spacer(Modifier.height(14.dp))
                             AchievementToast(onClose = { toastVisible = false })
@@ -341,6 +358,14 @@ private fun MainMenuContent(
                 }
             }
         }
+        }
+
+        if (showMistakes) {
+            MistakesDialog(
+                language = language.code,
+                onDismiss = { showMistakes = false },
+                onCountChanged = { mistakesCount = it }
+            )
         }
 
         if (showFullRating) {
@@ -392,14 +417,36 @@ private fun MainMenuContent(
     }
 
     if (alreadyCompletedTestNumber != null) {
-        AlertDialog(
-            onDismissRequest = { alreadyCompletedTestNumber = null },
-            title = { Text(strings.mainMenuAlreadyCompletedTitle) },
-            text = { Text(strings.mainMenuAlreadyCompletedText("${strings.commonTestWord} $alreadyCompletedTestNumber")) },
-            confirmButton = {
-                Button(onClick = { alreadyCompletedTestNumber = null }) { Text(strings.mainMenuOk) }
+        // своё окно вместо стандартного AlertDialog: тот выбивался из стиля «Вечерней дороги»
+        Dialog(onDismissRequest = { alreadyCompletedTestNumber = null }) {
+            val shape = RoundedCornerShape(24.dp)
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .clip(shape)
+                    .background(Brush.verticalGradient(listOf(Color(0xFF1A2480), Color(0xFF0C1456))))
+                    .border(1.dp, Dash.PanelBorder, shape)
+                    .padding(22.dp)
+            ) {
+                Text(
+                    text = strings.mainMenuAlreadyCompletedTitle,
+                    fontFamily = interFontFamily(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = Color.White
+                )
+                Text(
+                    text = strings.mainMenuAlreadyCompletedText("${strings.commonTestWord} $alreadyCompletedTestNumber"),
+                    fontFamily = interFontFamily(),
+                    fontSize = 14.sp,
+                    color = Dash.Text2,
+                    modifier = Modifier.padding(top = 10.dp, bottom = 18.dp)
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    DialogYellowButton(text = strings.mainMenuOk) { alreadyCompletedTestNumber = null }
+                }
             }
-        )
+        }
     }
 }
 
@@ -1135,8 +1182,9 @@ private fun RatingPanel(board: LeaderboardDto?, onOpenFull: () -> Unit) {
 }
 
 @Composable
-private fun MistakesPanel() {
-    if (!PreviewData.SHOW) return
+private fun MistakesPanel(count: Int, onRepeat: () -> Unit) {
+    // без ошибок повторять нечего
+    if (count <= 0) return
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
     DashPanel {
@@ -1144,17 +1192,25 @@ private fun MistakesPanel() {
             RefreshIcon(Color(0xFFFFB92E), 36.dp)
             Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
                 Text(strings.dashMistakes, fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
-                Text(strings.dashMistakesCount(PreviewData.MISTAKES), fontFamily = interFamily, fontSize = 13.sp, color = Dash.Text2)
+                Text(strings.dashMistakesCount(count), fontFamily = interFamily, fontSize = 13.sp, color = Dash.Text2)
             }
             DocIcon(Dash.Blue.copy(alpha = 0.7f), 52.dp, filled = true)
         }
-        PanelButton(strings.dashRepeat, onClick = { }, modifier = Modifier.padding(top = 14.dp).fillMaxWidth(0.6f))
+        PanelButton(strings.dashRepeat, onClick = onRepeat, modifier = Modifier.padding(top = 14.dp).fillMaxWidth(0.6f))
     }
 }
 
 /** Телефон: те же блоки в виде компактных строк. */
 @Composable
-private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressDto) -> Unit, onDailyQuestion: () -> Unit) {
+private fun SideCards(
+    progress: LatestProgressDto?,
+    onContinue: (LatestProgressDto) -> Unit,
+    onDailyQuestion: () -> Unit,
+    mistakesCount: Int,
+    onMistakes: () -> Unit,
+    board: LeaderboardDto?,
+    onOpenFullRating: () -> Unit
+) {
     val strings = LocalStrings.current
     val interFamily = interFontFamily()
 
@@ -1181,14 +1237,14 @@ private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressD
     CompactRow(icon = { BulbIcon(30.dp) }, title = strings.dashQuestionOfDay, subtitle = strings.dashQuestionOfDaySub) {
         PanelButton(strings.dashAnswer, onClick = onDailyQuestion, modifier = Modifier.height(38.dp))
     }
-    CompactRow(icon = { TrophyIcon(30.dp) }, title = strings.dashWeeklyRating, subtitle = null, extra = {
+    if (board != null && board.entries.isNotEmpty()) CompactRow(icon = { TrophyIcon(30.dp) }, title = strings.dashWeeklyRating, subtitle = null, extra = {
         // три участника делят ширину поровну, чтобы имена не рвались по буквам
         Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            PreviewData.TOP.forEach { (name, score, place) ->
+            (board?.entries ?: emptyList()).forEach { entry ->
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    PlaceDot(place, small = true)
+                    PlaceDot(entry.rank, small = true)
                     Text(
-                        "$name $score",
+                        "${entry.username} ${entry.points}",
                         fontFamily = interFamily,
                         fontSize = 10.sp,
                         color = Color.White,
@@ -1202,13 +1258,16 @@ private fun SideCards(progress: LatestProgressDto?, onContinue: (LatestProgressD
         }
         Row(modifier = Modifier.padding(top = 6.dp)) {
             Text(strings.dashYourPlace, fontFamily = interFamily, fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f))
-            Text(" ${PreviewData.MY_PLACE}", fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Brand.Yellow)
+            Text(
+                if ((board?.myRank ?: 0) > 0) " ${board?.myRank}" else " —",
+                fontFamily = interFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Brand.Yellow
+            )
         }
-    }) {
+    }, onClick = onOpenFullRating) {
         ChevronIcon(color = Dash.Blue, modifier = Modifier.size(20.dp))
     }
-    CompactRow(icon = { TargetIcon(30.dp) }, title = strings.dashMistakes, subtitle = strings.dashMistakesCount(PreviewData.MISTAKES)) {
-        PanelButton(strings.dashRepeat, onClick = { }, modifier = Modifier.height(38.dp))
+    if (mistakesCount > 0) CompactRow(icon = { TargetIcon(30.dp) }, title = strings.dashMistakes, subtitle = strings.dashMistakesCount(mistakesCount)) {
+        PanelButton(strings.dashRepeat, onClick = onMistakes, modifier = Modifier.height(38.dp))
     }
     CompactRow(icon = { MedalIcon(30.dp) }, title = strings.dashAchievements, subtitle = null, extra = {
         Row(modifier = Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1227,12 +1286,19 @@ private fun CompactRow(
     title: String,
     subtitle: String?,
     extra: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit
 ) {
     val interFamily = interFontFamily()
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+                } else Modifier
+            )
             .padding(vertical = 12.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

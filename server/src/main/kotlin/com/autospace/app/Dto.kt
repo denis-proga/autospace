@@ -340,3 +340,25 @@ data class LeaderboardResponse(
     val myPoints: Int = 0,
     val total: Int = 0
 )
+
+/** Вопросы, в которых человек ошибся в прошлый раз. */
+@Serializable
+data class MistakesResponse(
+    val count: Int,
+    val questions: List<QuestionResponse> = emptyList()
+)
+
+@Serializable
+data class MistakeAnswerRequest(
+    val questionId: Int,
+    val option: String
+)
+
+@Serializable
+data class MistakeAnswerResponse(
+    val success: Boolean,
+    val correct: Boolean = false,
+    val correctOption: String = "",
+    val explanation: String = "",
+    val left: Int = 0
+)
